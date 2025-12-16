@@ -5,8 +5,10 @@ import { Header } from '@/components/Header';
 import { InputSection } from '@/components/InputSection';
 import { WebsitePreview } from '@/components/WebsitePreview';
 import { LoadingState } from '@/components/LoadingState';
+import { WhatsAppButton } from '@/components/WhatsAppButton';
+import { HeroSection } from '@/components/generated/HeroSection';
 import { toast } from 'sonner';
-import { Sparkles, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
@@ -80,64 +82,62 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Header />
       
-      <main className="pb-16">
-        {/* Hero Section */}
+      <main>
+        {/* Hero Section - show when no business loaded */}
         {!business && !isLoading && (
-          <section className="py-12 md:py-20 text-center px-4">
-            <div className="max-w-3xl mx-auto animate-fade-up">
-              <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full mb-6 font-medium">
-                <Sparkles className="h-4 w-4" />
-                <span>AI-Powered Website Generator</span>
-              </div>
-              <h1 className="text-3xl md:text-5xl lg:text-6xl font-extrabold text-foreground mb-6 leading-tight">
-                {t('tagline')}
-              </h1>
-              <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-                Simply paste a Google Maps link and watch your professional business website come to life in seconds.
-              </p>
+          <HeroSection />
+        )}
+
+        {/* Input Section */}
+        {!business && !isLoading && (
+          <section id="about" className="py-16 bg-secondary/30">
+            <div className="max-w-7xl mx-auto px-4">
+              {/* Error Display */}
+              {error && (
+                <div className="max-w-3xl mx-auto mb-6">
+                  <div className="bg-destructive/10 border border-destructive/30 text-destructive rounded-lg p-4 flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium">{t('errorTitle')}</p>
+                      <p className="text-sm mt-1 opacity-90">{error}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <InputSection 
+                onGenerate={handleGenerate}
+                isLoading={isLoading}
+              />
             </div>
           </section>
         )}
 
-        {/* Error Display */}
-        {error && !isLoading && !business && (
-          <div className="max-w-3xl mx-auto px-4 mb-6">
-            <div className="bg-destructive/10 border border-destructive/30 text-destructive rounded-lg p-4 flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="font-medium">{t('errorTitle')}</p>
-                <p className="text-sm mt-1 opacity-90">{error}</p>
-              </div>
-            </div>
-          </div>
+        {/* Loading State */}
+        {isLoading && (
+          <section className="py-20">
+            <LoadingState />
+          </section>
         )}
 
-        {/* Main Content */}
-        <div className="space-y-12">
-          {!business && !isLoading && (
-            <InputSection 
-              onGenerate={handleGenerate}
-              isLoading={isLoading}
-            />
-          )}
-
-          {isLoading && <LoadingState />}
-
-          {business && !isLoading && (
-            <div className="animate-fade-up">
-              <div className="max-w-7xl mx-auto px-4 mb-6">
-                <button
-                  onClick={handleReset}
-                  className="text-primary hover:underline font-medium flex items-center gap-2"
-                >
-                  ← {t('generateAnother')}
-                </button>
-              </div>
-              <WebsitePreview business={business} />
+        {/* Generated Website Preview */}
+        {business && !isLoading && (
+          <div className="animate-fade-up">
+            <div className="max-w-7xl mx-auto px-4 py-6">
+              <button
+                onClick={handleReset}
+                className="text-primary hover:underline font-medium flex items-center gap-2"
+              >
+                ← {t('generateAnother')}
+              </button>
             </div>
-          )}
-        </div>
+            <WebsitePreview business={business} />
+          </div>
+        )}
       </main>
+
+      {/* Floating WhatsApp Button */}
+      <WhatsAppButton phoneNumber="+1234567890" />
     </div>
   );
 };

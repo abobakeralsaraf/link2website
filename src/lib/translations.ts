@@ -6,6 +6,25 @@ export const translations = {
     appName: 'PlaceID2Site',
     tagline: 'Transform any Google Maps location into a stunning business website',
     
+    // Navigation
+    navHome: 'Home',
+    navAbout: 'About',
+    navServices: 'Services',
+    navReviews: 'Reviews',
+    navContact: 'Contact',
+    navPricing: 'Pricing',
+    navFaq: 'FAQ',
+    
+    // Hero
+    heroTitle: 'Discover Local Business Reviews',
+    heroSubtitle: 'Get instant access to authentic Google reviews for any local business. Make informed decisions with real customer feedback.',
+    heroTrusted: 'Trusted by thousands',
+    heroCta: 'View Reviews',
+    heroCtaSecondary: 'Learn More',
+    
+    // WhatsApp
+    whatsappGreeting: 'Hello! I found your business on PlaceID2Site and would like to know more.',
+    
     // Input section
     inputTitle: 'Enter Business Location',
     inputPlaceholder: 'Paste Google Maps URL or Place ID...',
@@ -91,6 +110,25 @@ export const translations = {
     // App
     appName: 'PlaceID2Site',
     tagline: 'حوّل أي موقع على خرائط جوجل إلى موقع أعمال احترافي',
+    
+    // Navigation
+    navHome: 'الرئيسية',
+    navAbout: 'من نحن',
+    navServices: 'الخدمات',
+    navReviews: 'التقييمات',
+    navContact: 'اتصل بنا',
+    navPricing: 'الأسعار',
+    navFaq: 'الأسئلة الشائعة',
+    
+    // Hero
+    heroTitle: 'اكتشف تقييمات الأعمال المحلية',
+    heroSubtitle: 'احصل على وصول فوري لتقييمات جوجل الأصلية لأي نشاط تجاري محلي. اتخذ قرارات مستنيرة مع ملاحظات العملاء الحقيقية.',
+    heroTrusted: 'موثوق من الآلاف',
+    heroCta: 'عرض التقييمات',
+    heroCtaSecondary: 'اعرف المزيد',
+    
+    // WhatsApp
+    whatsappGreeting: 'مرحباً! وجدت نشاطك التجاري على PlaceID2Site وأود معرفة المزيد.',
     
     // Input section
     inputTitle: 'أدخل موقع العمل',
