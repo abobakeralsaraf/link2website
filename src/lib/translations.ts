@@ -17,9 +17,13 @@ export const translations = {
     demoDescription: 'See how it works with a sample business',
     
     // Errors
+    errorTitle: 'Error',
     errorInvalidInput: 'Please enter a valid Google Maps URL or Place ID',
     errorFetchFailed: 'Failed to fetch business data. Please try again.',
     errorApiKey: 'API key required. Please configure your Google Places API key.',
+    
+    // Navigation
+    generateAnother: 'Generate another website',
     
     // Preview
     previewTitle: 'Generated Website Preview',
@@ -99,9 +103,13 @@ export const translations = {
     demoDescription: 'شاهد كيف يعمل مع عمل نموذجي',
     
     // Errors
+    errorTitle: 'خطأ',
     errorInvalidInput: 'يرجى إدخال رابط خرائط جوجل صحيح أو معرف مكان',
     errorFetchFailed: 'فشل في جلب بيانات العمل. يرجى المحاولة مرة أخرى.',
     errorApiKey: 'مطلوب مفتاح API. يرجى تكوين مفتاح Google Places API.',
+    
+    // Navigation
+    generateAnother: 'إنشاء موقع آخر',
     
     // Preview
     previewTitle: 'معاينة الموقع المُنشأ',

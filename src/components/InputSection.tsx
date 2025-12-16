@@ -6,11 +6,10 @@ import { Search, Sparkles, MapPin } from 'lucide-react';
 
 interface InputSectionProps {
   onGenerate: (input: string) => void;
-  onDemo: () => void;
   isLoading: boolean;
 }
 
-export function InputSection({ onGenerate, onDemo, isLoading }: InputSectionProps) {
+export function InputSection({ onGenerate, isLoading }: InputSectionProps) {
   const { t, dir } = useLanguage();
   const [input, setInput] = useState('');
 
@@ -46,37 +45,25 @@ export function InputSection({ onGenerate, onDemo, isLoading }: InputSectionProp
             />
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Button
-              type="submit"
-              variant="hero"
-              size="lg"
-              className="flex-1"
-              disabled={isLoading || !input.trim()}
-            >
-              {isLoading ? (
-                <>
-                  <div className="h-5 w-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                  <span>{t('generating')}</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-5 w-5" />
-                  <span>{t('generateButton')}</span>
-                </>
-              )}
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              onClick={onDemo}
-              disabled={isLoading}
-            >
-              {t('tryDemo')}
-            </Button>
-          </div>
+          <Button
+            type="submit"
+            variant="hero"
+            size="lg"
+            className="w-full"
+            disabled={isLoading || !input.trim()}
+          >
+            {isLoading ? (
+              <>
+                <div className="h-5 w-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                <span>{t('generating')}</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-5 w-5" />
+                <span>{t('generateButton')}</span>
+              </>
+            )}
+          </Button>
         </form>
 
         <p className="mt-4 text-sm text-muted-foreground text-center">
