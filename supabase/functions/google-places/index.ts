@@ -62,40 +62,58 @@ async function resolveShortUrl(shortUrl: string): Promise<string> {
 }
 
 // Extract Place ID from various Google Maps URL formats
-function extractPlaceId(url: string): string | null {
+function extractPlaceId(url: string): { placeId: string | null; searchQuery: string | null } {
   console.log('Extracting Place ID from:', url);
   
-  // Direct Place ID format (starts with ChIJ)
-  if (url.startsWith('ChIJ') || url.startsWith('0x')) {
-    return url;
+  // Direct Place ID format (starts with ChIJ - valid for new API)
+  if (url.startsWith('ChIJ')) {
+    return { placeId: url, searchQuery: null };
   }
 
-  // Try to extract from URL patterns
-  const patterns = [
+  // Try to extract valid Place ID from URL patterns (only ChIJ format is valid)
+  const validPatterns = [
     /place_id[=:]([^&\s]+)/i,
-    /!1s([^!]+)/,
-    /data=[^!]*!1s([^!]+)/,
-    /\/place\/[^\/]+\/@[^\/]+\/data=[^!]*!3m1!4b1!4m[^!]*!3m[^!]*!1s([^!]+)/,
-    /ftid=([^&]+)/,
+    /!1s(ChIJ[^!]+)/,
+    /data=[^!]*!1s(ChIJ[^!]+)/,
   ];
 
-  for (const pattern of patterns) {
+  for (const pattern of validPatterns) {
     const match = url.match(pattern);
-    if (match && match[1]) {
-      console.log('Found Place ID:', match[1]);
-      return decodeURIComponent(match[1]);
+    if (match && match[1] && match[1].startsWith('ChIJ')) {
+      console.log('Found valid Place ID:', match[1]);
+      return { placeId: decodeURIComponent(match[1]), searchQuery: null };
     }
   }
 
-  // Try to extract from CID (Customer ID)
-  const cidMatch = url.match(/cid=(\d+)/);
-  if (cidMatch) {
-    console.log('Found CID:', cidMatch[1]);
-    return `cid:${cidMatch[1]}`;
+  // Extract search query from URL for Text Search fallback
+  let searchQuery: string | null = null;
+  
+  // Try to get from 'q' parameter (business name + address)
+  const qMatch = url.match(/[?&]q=([^&]+)/);
+  if (qMatch) {
+    searchQuery = decodeURIComponent(qMatch[1].replace(/\+/g, ' '));
+    console.log('Found search query from q param:', searchQuery);
+  }
+  
+  // Try to get from /place/ path
+  if (!searchQuery) {
+    const placeMatch = url.match(/\/place\/([^\/\@\?]+)/);
+    if (placeMatch) {
+      searchQuery = decodeURIComponent(placeMatch[1].replace(/\+/g, ' '));
+      console.log('Found search query from place path:', searchQuery);
+    }
   }
 
-  console.log('No Place ID found in URL');
-  return null;
+  // If we found ftid but no valid ChIJ place ID, we need to use search
+  const ftidMatch = url.match(/ftid=([^&]+)/);
+  if (ftidMatch) {
+    console.log('Found ftid (not valid for new API):', ftidMatch[1]);
+    // ftid is not valid for new Places API, must use search
+    return { placeId: null, searchQuery };
+  }
+
+  console.log('No valid Place ID found, search query:', searchQuery);
+  return { placeId: null, searchQuery };
 }
 
 // Search for place by text query (fallback)
@@ -298,6 +316,7 @@ serve(async (req) => {
     }
 
     let placeId: string | null = null;
+    let searchQuery: string | null = null;
     let resolvedUrl = input.trim();
 
     // Check if it's a shortened URL that needs resolving
@@ -306,27 +325,24 @@ serve(async (req) => {
     }
 
     // Try to extract Place ID from URL
-    placeId = extractPlaceId(resolvedUrl);
+    const extracted = extractPlaceId(resolvedUrl);
+    placeId = extracted.placeId;
+    searchQuery = extracted.searchQuery;
 
-    // If no Place ID found and it looks like a URL, try to extract a search query
-    if (!placeId && resolvedUrl.includes('google.com/maps')) {
-      // Extract place name from URL for search
-      const placeMatch = resolvedUrl.match(/\/place\/([^\/\@]+)/);
-      if (placeMatch) {
-        const placeName = decodeURIComponent(placeMatch[1].replace(/\+/g, ' '));
-        console.log('Extracted place name:', placeName);
-        placeId = await searchPlace(placeName);
-      }
+    // If no valid Place ID found but we have a search query, use Text Search
+    if (!placeId && searchQuery) {
+      console.log('No valid Place ID, using Text Search with:', searchQuery);
+      placeId = await searchPlace(searchQuery);
     }
 
-    // If still no Place ID and input is not a URL, treat it as a direct Place ID
-    if (!placeId && !resolvedUrl.includes('http')) {
+    // If still no Place ID and input is a direct ChIJ format
+    if (!placeId && !resolvedUrl.includes('http') && resolvedUrl.startsWith('ChIJ')) {
       placeId = resolvedUrl;
     }
 
     if (!placeId) {
       return new Response(
-        JSON.stringify({ error: 'Could not extract Place ID from the provided URL. Please try with a different URL format or provide the Place ID directly.' }),
+        JSON.stringify({ error: 'Could not find the business. Please try with a different URL or check that the business exists on Google Maps.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
