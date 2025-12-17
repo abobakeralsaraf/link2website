@@ -1,7 +1,7 @@
 import { useLanguage } from '@/hooks/useLanguage';
 import { BusinessData } from '@/lib/types';
 import { Star } from 'lucide-react';
-import heroBg from '@/assets/hero-bg.jpg';
+import defaultHeroBg from '@/assets/hero-bg.jpg';
 
 interface HeroSectionProps {
   business: BusinessData;
@@ -11,13 +11,18 @@ export function HeroSection({ business }: HeroSectionProps) {
   const { t, language } = useLanguage();
   
   const name = language === 'ar' && business.nameAr ? business.nameAr : business.name;
+  
+  // Use first Google Maps photo if available, otherwise fall back to default
+  const heroImage = business.photos && business.photos.length > 0 
+    ? business.photos[0] 
+    : defaultHeroBg;
 
   return (
     <section className="relative min-h-[60vh] flex items-center justify-center overflow-hidden">
-      {/* Background Image */}
+      {/* Background Image - Dynamic from Google Maps or fallback */}
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${heroBg})` }}
+        style={{ backgroundImage: `url(${heroImage})` }}
       />
       
       {/* Dark Overlay */}

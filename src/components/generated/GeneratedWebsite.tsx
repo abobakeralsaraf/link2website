@@ -6,6 +6,7 @@ import { MapSection } from './MapSection';
 import { PhotoGallery } from './PhotoGallery';
 import { ReviewsSection } from './ReviewsSection';
 import { CTASection } from './CTASection';
+import { WhatsAppButton } from '../WhatsAppButton';
 
 interface GeneratedWebsiteProps {
   business: BusinessData;
@@ -35,6 +36,9 @@ export function GeneratedWebsite({ business }: GeneratedWebsiteProps) {
       </div>
       
       <CTASection business={business} />
+      
+      {/* WhatsApp Button - only renders if phone exists */}
+      {business.phone && <WhatsAppButton phoneNumber={business.phone} />}
       
       {/* Footer */}
       <footer className="bg-foreground/5 border-t border-border py-6">
