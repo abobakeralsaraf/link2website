@@ -5,7 +5,8 @@ import { BusinessData } from '@/lib/types';
 import { GeneratedWebsite } from './generated/GeneratedWebsite';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Download, Share2, ExternalLink, Monitor, Smartphone, Tablet, Check, Save, Loader2, LogIn } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Download, Share2, ExternalLink, Monitor, Smartphone, Tablet, Check, Save, Loader2, LogIn, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
@@ -108,6 +109,18 @@ export function WebsitePreview({ business }: WebsitePreviewProps) {
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 space-y-6">
+      {/* Demo Mode Banner for non-authenticated users */}
+      {!user && (
+        <Alert className="bg-primary/10 border-primary/20">
+          <Info className="h-4 w-4 text-primary" />
+          <AlertDescription className="text-foreground">
+            {language === 'ar' 
+              ? 'أنت في وضع المعاينة. سجّل الدخول لحفظ هذا الموقع في لوحة التحكم الخاصة بك والحصول على رابط عام.'
+              : 'You\'re in preview mode. Sign in to save this site to your dashboard and get a public URL.'}
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Controls */}
       <Card className="shadow-card border-border/50">
         <CardHeader className="pb-4">
@@ -149,9 +162,9 @@ export function WebsitePreview({ business }: WebsitePreviewProps) {
               </Button>
             ) : (
               <Link to="/auth">
-                <Button variant="default">
+                <Button variant="default" className="gap-2">
                   <LogIn className="h-4 w-4" />
-                  {t('signIn')} {language === 'ar' ? 'لحفظ الموقع' : 'to Save Site'}
+                  {language === 'ar' ? 'سجّل الدخول لحفظ الموقع' : 'Sign In to Save Site'}
                 </Button>
               </Link>
             )}
