@@ -1,6 +1,5 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,8 +7,6 @@ const corsHeaders = {
 };
 
 const GOOGLE_API_KEY = Deno.env.get('GOOGLE_PLACES_API_KEY');
-const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 
 interface PlaceDetails {
   placeId: string;
@@ -220,7 +217,7 @@ async function fetchPlaceDetails(placeId: string): Promise<PlaceDetails> {
     }
   }
 
-  // Process reviews
+  // Process reviews - sanitize to remove email addresses
   const reviews: Review[] = [];
   if (data.reviews && Array.isArray(data.reviews)) {
     const arabicReviews = dataAr?.reviews || [];
@@ -229,12 +226,17 @@ async function fetchPlaceDetails(placeId: string): Promise<PlaceDetails> {
       const review = data.reviews[i];
       const arReview = arabicReviews[i];
       
+      // Sanitize review text to remove potential email addresses
+      const sanitizeText = (text: string) => {
+        return text?.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[email protected]') || '';
+      };
+      
       reviews.push({
         authorName: review.authorAttribution?.displayName || 'Anonymous',
         authorPhoto: review.authorAttribution?.photoUri || undefined,
         rating: review.rating || 5,
-        text: review.text?.text || '',
-        textAr: arReview?.text?.text || undefined,
+        text: sanitizeText(review.text?.text || ''),
+        textAr: arReview?.text?.text ? sanitizeText(arReview.text.text) : undefined,
         time: review.publishTime || new Date().toISOString(),
         relativeTime: review.relativePublishTimeDescription || '',
       });
@@ -300,32 +302,7 @@ serve(async (req) => {
   }
 
   try {
-    // Validate authentication
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      console.error('No authorization header provided');
-      return new Response(
-        JSON.stringify({ error: 'Authentication required' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Create Supabase client with user's auth token
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: authHeader } }
-    });
-
-    // Verify the user is authenticated
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      console.error('Authentication failed:', authError?.message);
-      return new Response(
-        JSON.stringify({ error: 'Invalid or expired authentication token' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('Authenticated user:', user.id);
+    console.log('Google Places function called - Demo mode enabled (no auth required)');
 
     if (!GOOGLE_API_KEY) {
       console.error('GOOGLE_PLACES_API_KEY not configured');
