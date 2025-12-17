@@ -38,9 +38,14 @@ export function Header() {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden md:flex items-center gap-1" aria-label={t('dashboard')}>
             {navLinks.map((link) => (
-              <NavLink key={link.label} to={link.to}>
+              <NavLink
+                key={link.label}
+                to={link.to}
+                className="px-3 py-2 text-sm font-semibold text-foreground/90 hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
+                activeClassName="bg-secondary text-foreground"
+              >
                 {link.label}
               </NavLink>
             ))}
