@@ -8,6 +8,20 @@ const corsHeaders = {
 
 const GOOGLE_API_KEY = Deno.env.get('GOOGLE_PLACES_API_KEY');
 
+// Allowed domains for URL validation
+const ALLOWED_DOMAINS = [
+  'google.com',
+  'google.co',
+  'maps.google.com',
+  'www.google.com',
+  'maps.app.goo.gl',
+  'goo.gl',
+];
+
+// Input validation constants
+const MAX_INPUT_LENGTH = 2000;
+const VALID_PLACE_ID_PATTERN = /^ChIJ[a-zA-Z0-9_-]{20,}$/;
+
 interface PlaceDetails {
   placeId: string;
   name: string;
@@ -44,29 +58,87 @@ interface BusinessHours {
   isOpenNow?: boolean;
 }
 
-// Resolve shortened Google Maps URL to get the actual URL
+// Generic error codes for client responses (no internal details)
+const ERROR_CODES = {
+  INVALID_INPUT: { code: 'INVALID_INPUT', message: 'Invalid input provided. Please enter a valid Google Maps URL or Place ID.' },
+  PLACE_NOT_FOUND: { code: 'PLACE_NOT_FOUND', message: 'Could not find the business. Please try with a different URL.' },
+  SERVICE_ERROR: { code: 'SERVICE_ERROR', message: 'Service temporarily unavailable. Please try again later.' },
+  CONFIG_ERROR: { code: 'CONFIG_ERROR', message: 'Service configuration error. Please contact support.' },
+  INVALID_URL: { code: 'INVALID_URL', message: 'Invalid URL format. Please use a valid Google Maps URL.' },
+  INVALID_DOMAIN: { code: 'INVALID_DOMAIN', message: 'URL must be from Google Maps. Please copy the URL directly from Google Maps.' },
+};
+
+// Validate URL is from allowed Google domains only
+function isAllowedDomain(url: string): boolean {
+  try {
+    const parsedUrl = new URL(url);
+    const hostname = parsedUrl.hostname.toLowerCase();
+    
+    // Must be HTTPS
+    if (parsedUrl.protocol !== 'https:') {
+      return false;
+    }
+    
+    // Check against allowed domains
+    return ALLOWED_DOMAINS.some(domain => 
+      hostname === domain || hostname.endsWith('.' + domain)
+    );
+  } catch {
+    return false;
+  }
+}
+
+// Validate Place ID format
+function isValidPlaceId(id: string): boolean {
+  return VALID_PLACE_ID_PATTERN.test(id);
+}
+
+// Sanitize input string
+function sanitizeInput(input: string): string {
+  return input.trim().slice(0, MAX_INPUT_LENGTH);
+}
+
+// Resolve shortened Google Maps URL with domain validation
 async function resolveShortUrl(shortUrl: string): Promise<string> {
-  console.log('Resolving short URL:', shortUrl);
+  console.log('[INFO] Resolving short URL');
+  
+  // Validate the short URL domain first
+  if (!isAllowedDomain(shortUrl)) {
+    throw new Error('INVALID_DOMAIN');
+  }
+  
   try {
     const response = await fetch(shortUrl, {
       method: 'HEAD',
       redirect: 'follow',
     });
+    
     const resolvedUrl = response.url;
-    console.log('Resolved URL:', resolvedUrl);
+    
+    // Validate the resolved URL domain
+    if (!isAllowedDomain(resolvedUrl)) {
+      console.error('[SECURITY] Redirect led to non-allowed domain');
+      throw new Error('INVALID_DOMAIN');
+    }
+    
+    console.log('[INFO] URL resolved successfully');
     return resolvedUrl;
   } catch (error) {
-    console.error('Error resolving URL:', error);
-    throw new Error('Failed to resolve shortened URL');
+    if (error instanceof Error && error.message === 'INVALID_DOMAIN') {
+      throw error;
+    }
+    console.error('[ERROR] Failed to resolve URL');
+    throw new Error('INVALID_URL');
   }
 }
 
 // Extract Place ID from various Google Maps URL formats
 function extractPlaceId(url: string): { placeId: string | null; searchQuery: string | null } {
-  console.log('Extracting Place ID from:', url);
+  console.log('[INFO] Extracting Place ID');
   
   // Direct Place ID format (starts with ChIJ - valid for new API)
-  if (url.startsWith('ChIJ')) {
+  if (isValidPlaceId(url)) {
+    console.log('[INFO] Valid Place ID format detected');
     return { placeId: url, searchQuery: null };
   }
 
@@ -79,9 +151,12 @@ function extractPlaceId(url: string): { placeId: string | null; searchQuery: str
 
   for (const pattern of validPatterns) {
     const match = url.match(pattern);
-    if (match && match[1] && match[1].startsWith('ChIJ')) {
-      console.log('Found valid Place ID:', match[1]);
-      return { placeId: decodeURIComponent(match[1]), searchQuery: null };
+    if (match && match[1]) {
+      const extractedId = decodeURIComponent(match[1]);
+      if (isValidPlaceId(extractedId)) {
+        console.log('[INFO] Valid Place ID extracted from URL');
+        return { placeId: extractedId, searchQuery: null };
+      }
     }
   }
 
@@ -91,34 +166,32 @@ function extractPlaceId(url: string): { placeId: string | null; searchQuery: str
   // Try to get from 'q' parameter (business name + address)
   const qMatch = url.match(/[?&]q=([^&]+)/);
   if (qMatch) {
-    searchQuery = decodeURIComponent(qMatch[1].replace(/\+/g, ' '));
-    console.log('Found search query from q param:', searchQuery);
+    searchQuery = decodeURIComponent(qMatch[1].replace(/\+/g, ' ')).slice(0, 200);
+    console.log('[INFO] Search query extracted from q param');
   }
   
   // Try to get from /place/ path
   if (!searchQuery) {
     const placeMatch = url.match(/\/place\/([^\/\@\?]+)/);
     if (placeMatch) {
-      searchQuery = decodeURIComponent(placeMatch[1].replace(/\+/g, ' '));
-      console.log('Found search query from place path:', searchQuery);
+      searchQuery = decodeURIComponent(placeMatch[1].replace(/\+/g, ' ')).slice(0, 200);
+      console.log('[INFO] Search query extracted from place path');
     }
   }
 
   // If we found ftid but no valid ChIJ place ID, we need to use search
   const ftidMatch = url.match(/ftid=([^&]+)/);
   if (ftidMatch) {
-    console.log('Found ftid (not valid for new API):', ftidMatch[1]);
-    // ftid is not valid for new Places API, must use search
+    console.log('[INFO] ftid found (requires search fallback)');
     return { placeId: null, searchQuery };
   }
 
-  console.log('No valid Place ID found, search query:', searchQuery);
   return { placeId: null, searchQuery };
 }
 
 // Search for place by text query (fallback)
 async function searchPlace(query: string): Promise<string | null> {
-  console.log('Searching for place:', query);
+  console.log('[INFO] Searching for place by query');
   
   const searchUrl = `https://places.googleapis.com/v1/places:searchText`;
   
@@ -135,19 +208,25 @@ async function searchPlace(query: string): Promise<string | null> {
     }),
   });
 
+  if (!response.ok) {
+    console.error('[ERROR] Places search failed with status:', response.status);
+    return null;
+  }
+
   const data = await response.json();
-  console.log('Search response:', JSON.stringify(data));
 
   if (data.places && data.places.length > 0) {
+    console.log('[INFO] Place found via search');
     return data.places[0].id;
   }
   
+  console.log('[INFO] No places found for query');
   return null;
 }
 
 // Fetch place details using Google Places API (New)
 async function fetchPlaceDetails(placeId: string): Promise<PlaceDetails> {
-  console.log('Fetching place details for:', placeId);
+  console.log('[INFO] Fetching place details');
 
   const fields = [
     'id',
@@ -178,13 +257,12 @@ async function fetchPlaceDetails(placeId: string): Promise<PlaceDetails> {
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error('Places API error:', response.status, errorText);
-    throw new Error(`Places API error: ${response.status} - ${errorText}`);
+    console.error('[ERROR] Places API request failed with status:', response.status);
+    throw new Error('PLACE_NOT_FOUND');
   }
 
   const data = await response.json();
-  console.log('Place details response:', JSON.stringify(data).substring(0, 500));
+  console.log('[INFO] Place details fetched successfully');
 
   // Also fetch Arabic version
   const urlAr = `https://places.googleapis.com/v1/places/${placeId}?languageCode=ar`;
@@ -200,10 +278,10 @@ async function fetchPlaceDetails(placeId: string): Promise<PlaceDetails> {
     });
     if (responseAr.ok) {
       dataAr = await responseAr.json();
-      console.log('Arabic data fetched successfully');
+      console.log('[INFO] Arabic data fetched successfully');
     }
-  } catch (e) {
-    console.log('Could not fetch Arabic data:', e);
+  } catch {
+    console.log('[INFO] Arabic data not available');
   }
 
   // Process photos
@@ -217,7 +295,7 @@ async function fetchPlaceDetails(placeId: string): Promise<PlaceDetails> {
     }
   }
 
-  // Process reviews - sanitize to remove email addresses
+  // Process reviews - sanitize to remove email addresses and PII
   const reviews: Review[] = [];
   if (data.reviews && Array.isArray(data.reviews)) {
     const arabicReviews = dataAr?.reviews || [];
@@ -226,9 +304,12 @@ async function fetchPlaceDetails(placeId: string): Promise<PlaceDetails> {
       const review = data.reviews[i];
       const arReview = arabicReviews[i];
       
-      // Sanitize review text to remove potential email addresses
+      // Sanitize review text to remove potential email addresses and phone numbers
       const sanitizeText = (text: string) => {
-        return text?.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[email protected]') || '';
+        if (!text) return '';
+        return text
+          .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[email protected]')
+          .replace(/(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g, '[phone]');
       };
       
       reviews.push({
@@ -302,33 +383,76 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Google Places function called - Demo mode enabled (no auth required)');
+    console.log('[INFO] Google Places function called');
 
     if (!GOOGLE_API_KEY) {
-      console.error('GOOGLE_PLACES_API_KEY not configured');
+      console.error('[ERROR] API key not configured');
       return new Response(
-        JSON.stringify({ error: 'Google Places API key not configured' }),
+        JSON.stringify({ error: ERROR_CODES.CONFIG_ERROR.message, code: ERROR_CODES.CONFIG_ERROR.code }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const { input } = await req.json();
-    console.log('Received input:', input);
+    const body = await req.json();
+    const rawInput = body?.input;
 
-    if (!input || typeof input !== 'string') {
+    // Input validation
+    if (!rawInput || typeof rawInput !== 'string') {
+      console.log('[WARN] Invalid input type received');
       return new Response(
-        JSON.stringify({ error: 'Invalid input. Please provide a Google Maps URL or Place ID.' }),
+        JSON.stringify({ error: ERROR_CODES.INVALID_INPUT.message, code: ERROR_CODES.INVALID_INPUT.code }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Sanitize and validate input length
+    const input = sanitizeInput(rawInput);
+    
+    if (input.length === 0) {
+      return new Response(
+        JSON.stringify({ error: ERROR_CODES.INVALID_INPUT.message, code: ERROR_CODES.INVALID_INPUT.code }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     let placeId: string | null = null;
     let searchQuery: string | null = null;
-    let resolvedUrl = input.trim();
+    let resolvedUrl = input;
 
-    // Check if it's a shortened URL that needs resolving
-    if (resolvedUrl.includes('maps.app.goo.gl') || resolvedUrl.includes('goo.gl/maps')) {
-      resolvedUrl = await resolveShortUrl(resolvedUrl);
+    // Check if input is a URL
+    const isUrl = input.startsWith('http://') || input.startsWith('https://');
+    
+    if (isUrl) {
+      // Validate URL domain
+      if (!isAllowedDomain(input)) {
+        console.log('[WARN] URL from non-allowed domain');
+        return new Response(
+          JSON.stringify({ error: ERROR_CODES.INVALID_DOMAIN.message, code: ERROR_CODES.INVALID_DOMAIN.code }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Check if it's a shortened URL that needs resolving
+      if (input.includes('maps.app.goo.gl') || input.includes('goo.gl/maps')) {
+        try {
+          resolvedUrl = await resolveShortUrl(input);
+        } catch (error) {
+          const errorCode = error instanceof Error && error.message === 'INVALID_DOMAIN' 
+            ? ERROR_CODES.INVALID_DOMAIN 
+            : ERROR_CODES.INVALID_URL;
+          return new Response(
+            JSON.stringify({ error: errorCode.message, code: errorCode.code }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+    } else if (!isValidPlaceId(input)) {
+      // If not a URL and not a valid Place ID, reject
+      console.log('[WARN] Input is neither valid URL nor Place ID');
+      return new Response(
+        JSON.stringify({ error: ERROR_CODES.INVALID_INPUT.message, code: ERROR_CODES.INVALID_INPUT.code }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Try to extract Place ID from URL
@@ -338,24 +462,34 @@ serve(async (req) => {
 
     // If no valid Place ID found but we have a search query, use Text Search
     if (!placeId && searchQuery) {
-      console.log('No valid Place ID, using Text Search with:', searchQuery);
+      console.log('[INFO] Using Text Search fallback');
       placeId = await searchPlace(searchQuery);
     }
 
     // If still no Place ID and input is a direct ChIJ format
-    if (!placeId && !resolvedUrl.includes('http') && resolvedUrl.startsWith('ChIJ')) {
+    if (!placeId && isValidPlaceId(resolvedUrl)) {
       placeId = resolvedUrl;
     }
 
     if (!placeId) {
       return new Response(
-        JSON.stringify({ error: 'Could not find the business. Please try with a different URL or check that the business exists on Google Maps.' }),
+        JSON.stringify({ error: ERROR_CODES.PLACE_NOT_FOUND.message, code: ERROR_CODES.PLACE_NOT_FOUND.code }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Final validation of Place ID format
+    if (!isValidPlaceId(placeId)) {
+      console.log('[WARN] Extracted Place ID failed validation');
+      return new Response(
+        JSON.stringify({ error: ERROR_CODES.PLACE_NOT_FOUND.message, code: ERROR_CODES.PLACE_NOT_FOUND.code }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     // Fetch place details
     const placeDetails = await fetchPlaceDetails(placeId);
+    console.log('[INFO] Request completed successfully');
 
     return new Response(
       JSON.stringify({ data: placeDetails }),
@@ -363,10 +497,16 @@ serve(async (req) => {
     );
 
   } catch (error: unknown) {
-    console.error('Error in google-places function:', error);
-    const errorMessage = error instanceof Error ? error.message : 'An error occurred while fetching place data';
+    // Log detailed error server-side only
+    console.error('[ERROR] Function error:', error instanceof Error ? error.message : 'Unknown error');
+    
+    // Return generic error to client
+    const errorCode = error instanceof Error && error.message in ERROR_CODES
+      ? ERROR_CODES[error.message as keyof typeof ERROR_CODES]
+      : ERROR_CODES.SERVICE_ERROR;
+    
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: errorCode.message, code: errorCode.code }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
