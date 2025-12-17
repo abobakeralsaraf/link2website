@@ -5,8 +5,7 @@ import { Header } from '@/components/Header';
 import { InputSection } from '@/components/InputSection';
 import { WebsitePreview } from '@/components/WebsitePreview';
 import { LoadingState } from '@/components/LoadingState';
-import { WhatsAppButton } from '@/components/WhatsAppButton';
-import { HeroSection } from '@/components/generated/HeroSection';
+import { AdminHero } from '@/components/AdminHero';
 import { toast } from 'sonner';
 import { AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -83,14 +82,14 @@ const Index = () => {
       <Header />
       
       <main>
-        {/* Hero Section - show when no business loaded */}
+        {/* Admin Hero Section - show when no business loaded */}
         {!business && !isLoading && (
-          <HeroSection />
+          <AdminHero />
         )}
 
-        {/* Input Section */}
+        {/* Generator Section */}
         {!business && !isLoading && (
-          <section id="about" className="py-16 bg-secondary/30">
+          <section id="generator" className="py-16 bg-secondary/30">
             <div className="max-w-7xl mx-auto px-4">
               {/* Error Display */}
               {error && (
@@ -120,7 +119,7 @@ const Index = () => {
           </section>
         )}
 
-        {/* Generated Website Preview */}
+        {/* Generated Client Website Preview */}
         {business && !isLoading && (
           <div className="animate-fade-up">
             <div className="max-w-7xl mx-auto px-4 py-6">
@@ -135,9 +134,6 @@ const Index = () => {
           </div>
         )}
       </main>
-
-      {/* Floating WhatsApp Button */}
-      <WhatsAppButton phoneNumber="+1234567890" />
     </div>
   );
 };

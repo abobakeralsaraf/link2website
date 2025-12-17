@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLanguage } from '@/hooks/useLanguage';
 import { LanguageToggle } from './LanguageToggle';
-import { MapPin, Menu, X, Mail, Phone } from 'lucide-react';
+import { MapPin, Menu, X } from 'lucide-react';
 import { Button } from './ui/button';
 
 export function Header() {
@@ -9,34 +9,13 @@ export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const navLinks = [
-    { key: 'navHome', href: '#' },
-    { key: 'navAbout', href: '#about' },
-    { key: 'navServices', href: '#services' },
-    { key: 'navReviews', href: '#reviews' },
-    { key: 'navContact', href: '#contact' },
+    { key: 'navDashboard', href: '#' },
+    { key: 'navGenerator', href: '#generator' },
   ];
 
   return (
     <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b border-border/50 shadow-sm">
       <div className="max-w-7xl mx-auto px-4">
-        {/* Top bar with contact info */}
-        <div className="hidden md:flex items-center justify-end gap-4 py-2 text-sm border-b border-border/30">
-          <a 
-            href="mailto:contact@example.com" 
-            className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors"
-          >
-            <Mail className="h-3.5 w-3.5" />
-            <span>contact@example.com</span>
-          </a>
-          <a 
-            href="tel:+1234567890" 
-            className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors"
-          >
-            <Phone className="h-3.5 w-3.5" />
-            <span>+1 (234) 567-890</span>
-          </a>
-        </div>
-
         {/* Main navbar */}
         <div className="h-16 flex items-center justify-between">
           {/* Logo */}
@@ -92,24 +71,6 @@ export function Header() {
                 </a>
               ))}
             </nav>
-            
-            {/* Mobile contact info */}
-            <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-border/30 px-4">
-              <a 
-                href="mailto:contact@example.com" 
-                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
-              >
-                <Mail className="h-4 w-4" />
-                <span>contact@example.com</span>
-              </a>
-              <a 
-                href="tel:+1234567890" 
-                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
-              >
-                <Phone className="h-4 w-4" />
-                <span>+1 (234) 567-890</span>
-              </a>
-            </div>
           </div>
         )}
       </div>
