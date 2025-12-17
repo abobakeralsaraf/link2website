@@ -2,16 +2,27 @@ import { useLanguage } from '@/hooks/useLanguage';
 
 interface WhatsAppButtonProps {
   phoneNumber: string;
+  businessName?: string;
 }
 
-export function WhatsAppButton({ phoneNumber }: WhatsAppButtonProps) {
-  const { t } = useLanguage();
+export function WhatsAppButton({ phoneNumber, businessName }: WhatsAppButtonProps) {
+  const { t, language } = useLanguage();
   
   // Don't render if no phone number provided
   if (!phoneNumber) return null;
   
   const handleClick = () => {
-    const message = encodeURIComponent(t('whatsappGreeting'));
+    // Create personalized greeting with business name
+    let greeting: string;
+    if (businessName) {
+      greeting = language === 'ar' 
+        ? `مرحباً! وجدت ${businessName} وأود معرفة المزيد عن خدماتكم.`
+        : `Hello! I found ${businessName} and would like to know more about your services.`;
+    } else {
+      greeting = t('whatsappGreeting');
+    }
+    
+    const message = encodeURIComponent(greeting);
     const cleanNumber = phoneNumber.replace(/[^0-9]/g, '');
     window.open(`https://wa.me/${cleanNumber}?text=${message}`, '_blank');
   };

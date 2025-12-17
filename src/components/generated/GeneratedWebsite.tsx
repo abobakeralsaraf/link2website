@@ -38,7 +38,7 @@ export function GeneratedWebsite({ business }: GeneratedWebsiteProps) {
       <CTASection business={business} />
       
       {/* WhatsApp Button - only renders if phone exists */}
-      {business.phone && <WhatsAppButton phoneNumber={business.phone} />}
+      {business.phone && <WhatsAppButton phoneNumber={business.phone} businessName={business.name} />}
       
       {/* Footer */}
       <footer className="bg-foreground/5 border-t border-border py-6">

@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { LanguageProvider } from "@/hooks/useLanguage";
 import Index from "./pages/Index";
 import GeneratedSites from "./pages/GeneratedSites";
+import PublicSite from "./pages/PublicSite";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -20,6 +21,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/generated-sites" element={<GeneratedSites />} />
+            <Route path="/site/:slug" element={<PublicSite />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
