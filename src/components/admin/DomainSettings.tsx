@@ -205,13 +205,13 @@ export function DomainSettings({
                   <ol className="list-decimal ps-5 space-y-1">
                     <li>
                       {language === 'ar'
-                        ? 'فعّل Cloudflare كـ DNS/Proxy للدومين (تغيير Nameservers مرة واحدة).'
-                        : 'Enable Cloudflare as DNS/Proxy for your domain (change nameservers once).'}
+                        ? 'فعّل Cloudflare كخدمة DNS للدومين (تغيير Nameservers مرة واحدة).'
+                        : 'Enable Cloudflare as your domain DNS (change nameservers once).'}
                     </li>
                     <li>
                       {language === 'ar'
-                        ? 'داخل Cloudflare: اجعل سجلات A (@ و *) تشير إلى 185.158.133.1 وفعّل "Proxy" (السحابة البرتقالية).'
-                        : 'In Cloudflare: set A records (@ and *) to 185.158.133.1 and turn on “Proxy” (orange cloud).'}
+                        ? 'داخل Cloudflare: أنشئ سجلات A باسم @ و * إلى 185.158.133.1 واجعلها "DNS only" (السحابة الرمادية) حتى لا يظهر خطأ 1000.'
+                        : 'In Cloudflare: create A records @ and * to 185.158.133.1 and set them to “DNS only” (grey cloud) to avoid Error 1000.'}
                     </li>
                   </ol>
                   <p className="text-sm text-muted-foreground">
