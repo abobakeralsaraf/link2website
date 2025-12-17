@@ -66,7 +66,7 @@ export function DomainSettings({
 
     setIsSaving(true);
 
-    const fullDomain = `${subdomain.trim().toLowerCase()}.placeid2site.com`;
+    const fullDomain = `${subdomain.trim().toLowerCase()}.saroarabuilder.com`;
 
     const { error } = await supabase
       .from('generated_sites')
@@ -215,11 +215,11 @@ export function DomainSettings({
                     onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
                     className="flex-1"
                   />
-                  <span className="text-muted-foreground text-sm">.placeid2site.com</span>
+                  <span className="text-muted-foreground text-sm">.saroarabuilder.com</span>
                 </div>
                 {subdomain && (
                   <p className="text-sm text-primary">
-                    {language === 'ar' ? 'رابط الموقع:' : 'Site URL:'} https://{subdomain}.placeid2site.com
+                    {language === 'ar' ? 'رابط الموقع:' : 'Site URL:'} https://{subdomain}.saroarabuilder.com
                   </p>
                 )}
               </div>

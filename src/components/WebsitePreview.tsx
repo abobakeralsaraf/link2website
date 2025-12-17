@@ -258,7 +258,7 @@ function generateHTML(business: BusinessData, language: string): string {
   </main>
   
   <footer class="bg-gray-100 py-6 text-center text-gray-600">
-    <p>Powered by PlaceID2Site</p>
+    <p>Powered by Saroara Builder</p>
   </footer>
 </body>
 </html>`;
