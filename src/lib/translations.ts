@@ -4,31 +4,30 @@ export const translations = {
   en: {
     // App
     appName: 'PlaceID2Site',
-    tagline: 'Transform any Google Maps location into a stunning business website',
+    tagline: 'Generate professional websites for your clients from Google Maps data',
     
-    // Navigation
-    navHome: 'Home',
-    navAbout: 'About',
-    navServices: 'Services',
-    navReviews: 'Reviews',
-    navContact: 'Contact',
-    navPricing: 'Pricing',
-    navFaq: 'FAQ',
+    // Admin Navigation
+    navDashboard: 'Dashboard',
+    navGenerator: 'Generate Site',
     
-    // Hero
-    heroTitle: 'Discover Local Business Reviews',
-    heroSubtitle: 'Get instant access to authentic Google reviews for any local business. Make informed decisions with real customer feedback.',
-    heroTrusted: 'Trusted by thousands',
-    heroCta: 'View Reviews',
-    heroCtaSecondary: 'Learn More',
+    // Admin Hero
+    adminBadge: 'Website Generator Tool',
+    adminTitle: 'Generate Client Websites from Google Maps',
+    adminSubtitle: 'This tool generates individual websites for your clients based on their Google Maps Place IDs and business data. Enter a Place ID or Google Maps URL to get started.',
+    adminCta: 'Start Generating',
     
-    // WhatsApp
-    whatsappGreeting: 'Hello! I found your business on PlaceID2Site and would like to know more.',
+    // Features
+    featureGenerate: 'Auto-Generate Sites',
+    featureGenerateDesc: 'Create beautiful websites instantly from any Google Maps listing.',
+    featureData: 'Real Google Data',
+    featureDataDesc: 'Pull reviews, photos, hours, and contact info directly from Google.',
+    featureTemplate: 'Professional Templates',
+    featureTemplateDesc: 'Each generated site includes hero, reviews, gallery, and contact sections.',
     
     // Input section
-    inputTitle: 'Enter Business Location',
+    inputTitle: 'Enter Client Business Location',
     inputPlaceholder: 'Paste Google Maps URL or Place ID...',
-    generateButton: 'Generate Website',
+    generateButton: 'Generate Client Website',
     generating: 'Generating...',
     
     // Demo
@@ -42,12 +41,12 @@ export const translations = {
     errorApiKey: 'API key required. Please configure your Google Places API key.',
     
     // Navigation
-    generateAnother: 'Generate another website',
+    generateAnother: 'Generate another client site',
     
     // Preview
-    previewTitle: 'Generated Website Preview',
+    previewTitle: 'Generated Client Website Preview',
     
-    // Business sections
+    // Client Site Sections (used in generated websites)
     aboutUs: 'About Us',
     businessHours: 'Business Hours',
     location: 'Location',
@@ -70,7 +69,7 @@ export const translations = {
     openNow: 'Open Now',
     closedNow: 'Closed Now',
     
-    // Actions
+    // Actions (for client sites)
     call: 'Call',
     whatsapp: 'WhatsApp',
     visitWebsite: 'Visit Website',
@@ -84,7 +83,7 @@ export const translations = {
     noReviews: 'No reviews yet',
     viewAllReviews: 'View All Reviews',
     
-    // Footer
+    // Footer (for client sites)
     poweredBy: 'Powered by PlaceID2Site',
     
     // Language
@@ -97,7 +96,7 @@ export const translations = {
     fetchingData: 'Fetching business data...',
     
     // Success
-    websiteGenerated: 'Website generated successfully!',
+    websiteGenerated: 'Client website generated successfully!',
     copiedToClipboard: 'Copied to clipboard!',
     
     // API Key
@@ -105,35 +104,37 @@ export const translations = {
     apiKeyDescription: 'Enter your Google Places API key to fetch real business data',
     apiKeyPlaceholder: 'Enter your API key...',
     saveApiKey: 'Save API Key',
+    
+    // WhatsApp (for client sites - uses dynamic data)
+    whatsappGreeting: 'Hello! I found your business and would like to know more.',
   },
   ar: {
     // App
     appName: 'PlaceID2Site',
-    tagline: 'حوّل أي موقع على خرائط جوجل إلى موقع أعمال احترافي',
+    tagline: 'أنشئ مواقع احترافية لعملائك من بيانات خرائط جوجل',
     
-    // Navigation
-    navHome: 'الرئيسية',
-    navAbout: 'من نحن',
-    navServices: 'الخدمات',
-    navReviews: 'التقييمات',
-    navContact: 'اتصل بنا',
-    navPricing: 'الأسعار',
-    navFaq: 'الأسئلة الشائعة',
+    // Admin Navigation
+    navDashboard: 'لوحة التحكم',
+    navGenerator: 'إنشاء موقع',
     
-    // Hero
-    heroTitle: 'اكتشف تقييمات الأعمال المحلية',
-    heroSubtitle: 'احصل على وصول فوري لتقييمات جوجل الأصلية لأي نشاط تجاري محلي. اتخذ قرارات مستنيرة مع ملاحظات العملاء الحقيقية.',
-    heroTrusted: 'موثوق من الآلاف',
-    heroCta: 'عرض التقييمات',
-    heroCtaSecondary: 'اعرف المزيد',
+    // Admin Hero
+    adminBadge: 'أداة إنشاء المواقع',
+    adminTitle: 'أنشئ مواقع العملاء من خرائط جوجل',
+    adminSubtitle: 'هذه الأداة تنشئ مواقع فردية لعملائك بناءً على معرّفات أماكن خرائط جوجل وبيانات أعمالهم. أدخل معرّف المكان أو رابط خرائط جوجل للبدء.',
+    adminCta: 'ابدأ الإنشاء',
     
-    // WhatsApp
-    whatsappGreeting: 'مرحباً! وجدت نشاطك التجاري على PlaceID2Site وأود معرفة المزيد.',
+    // Features
+    featureGenerate: 'إنشاء تلقائي',
+    featureGenerateDesc: 'أنشئ مواقع جميلة فوراً من أي قائمة على خرائط جوجل.',
+    featureData: 'بيانات جوجل الحقيقية',
+    featureDataDesc: 'استخرج التقييمات والصور وساعات العمل ومعلومات الاتصال مباشرة.',
+    featureTemplate: 'قوالب احترافية',
+    featureTemplateDesc: 'كل موقع يتضمن قسم البطل والتقييمات والمعرض والاتصال.',
     
     // Input section
-    inputTitle: 'أدخل موقع العمل',
+    inputTitle: 'أدخل موقع عمل العميل',
     inputPlaceholder: 'الصق رابط خرائط جوجل أو معرف المكان...',
-    generateButton: 'إنشاء الموقع',
+    generateButton: 'إنشاء موقع العميل',
     generating: 'جارٍ الإنشاء...',
     
     // Demo
@@ -147,12 +148,12 @@ export const translations = {
     errorApiKey: 'مطلوب مفتاح API. يرجى تكوين مفتاح Google Places API.',
     
     // Navigation
-    generateAnother: 'إنشاء موقع آخر',
+    generateAnother: 'إنشاء موقع عميل آخر',
     
     // Preview
-    previewTitle: 'معاينة الموقع المُنشأ',
+    previewTitle: 'معاينة موقع العميل المُنشأ',
     
-    // Business sections
+    // Client Site Sections
     aboutUs: 'من نحن',
     businessHours: 'ساعات العمل',
     location: 'الموقع',
@@ -202,7 +203,7 @@ export const translations = {
     fetchingData: 'جارٍ جلب بيانات العمل...',
     
     // Success
-    websiteGenerated: 'تم إنشاء الموقع بنجاح!',
+    websiteGenerated: 'تم إنشاء موقع العميل بنجاح!',
     copiedToClipboard: 'تم النسخ إلى الحافظة!',
     
     // API Key
@@ -210,6 +211,9 @@ export const translations = {
     apiKeyDescription: 'أدخل مفتاح Google Places API لجلب بيانات الأعمال الحقيقية',
     apiKeyPlaceholder: 'أدخل مفتاح API...',
     saveApiKey: 'حفظ مفتاح API',
+    
+    // WhatsApp
+    whatsappGreeting: 'مرحباً! وجدت نشاطك التجاري وأود معرفة المزيد.',
   },
 } as const;
 
