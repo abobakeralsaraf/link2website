@@ -3,7 +3,7 @@ export type Language = 'en' | 'ar';
 export const translations = {
   en: {
     // App
-    appName: 'PlaceID2Site',
+    appName: 'Saroara Builder',
     tagline: 'Generate professional websites for your clients from Google Maps data',
     
     // Admin Navigation
@@ -86,7 +86,7 @@ export const translations = {
     viewAllReviews: 'View All Reviews',
     
     // Footer (for client sites)
-    poweredBy: 'Powered by PlaceID2Site',
+    poweredBy: 'Powered by Saroara Builder',
     
     // Language
     language: 'Language',
@@ -122,7 +122,7 @@ export const translations = {
     fullNamePlaceholder: 'Enter your full name...',
     authDescription: 'Sign in to manage your generated websites',
     accountCreated: 'Account created successfully!',
-    welcomeMessage: 'Welcome to PlaceID2Site!',
+    welcomeMessage: 'Welcome to Saroara Builder!',
     orContinueWith: 'Or continue with',
     continueWithGoogle: 'Continue with Google',
     signOut: 'Sign Out',
@@ -185,7 +185,7 @@ export const translations = {
   },
   ar: {
     // App
-    appName: 'PlaceID2Site',
+    appName: 'Saroara Builder',
     tagline: 'أنشئ مواقع احترافية لعملائك من بيانات خرائط جوجل',
     
     // Admin Navigation
@@ -268,7 +268,7 @@ export const translations = {
     viewAllReviews: 'عرض جميع التقييمات',
     
     // Footer
-    poweredBy: 'مدعوم بواسطة PlaceID2Site',
+    poweredBy: 'مدعوم بواسطة Saroara Builder',
     
     // Language
     language: 'اللغة',
@@ -304,7 +304,7 @@ export const translations = {
     fullNamePlaceholder: 'أدخل اسمك الكامل...',
     authDescription: 'سجل دخولك لإدارة مواقعك المُنشأة',
     accountCreated: 'تم إنشاء الحساب بنجاح!',
-    welcomeMessage: 'مرحباً بك في PlaceID2Site!',
+    welcomeMessage: 'مرحباً بك في Saroara Builder!',
     orContinueWith: 'أو تابع باستخدام',
     continueWithGoogle: 'المتابعة عبر Google',
     signOut: 'تسجيل الخروج',
