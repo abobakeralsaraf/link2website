@@ -13,7 +13,6 @@ import {
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Globe, Copy, Check, AlertCircle, Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,6 +20,7 @@ import { supabase } from '@/integrations/supabase/client';
 interface DomainSettingsProps {
   siteId: string;
   siteName: string;
+  slug: string;
   currentDomain: string | null;
   domainVerified: boolean;
   open: boolean;
@@ -31,6 +31,7 @@ interface DomainSettingsProps {
 export function DomainSettings({
   siteId,
   siteName,
+  slug,
   currentDomain,
   domainVerified,
   open,
@@ -39,53 +40,16 @@ export function DomainSettings({
 }: DomainSettingsProps) {
   const { language } = useLanguage();
   const [domain, setDomain] = useState(currentDomain || '');
-  const [subdomain, setSubdomain] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<string>('subdomain');
+
+  const autoSubdomain = `${slug}.saroarabuilder.com`;
 
   const handleCopy = async (text: string, id: string) => {
     await navigator.clipboard.writeText(text);
     setCopied(id);
     toast.success(language === 'ar' ? 'تم النسخ!' : 'Copied!');
     setTimeout(() => setCopied(null), 2000);
-  };
-
-  const handleSaveSubdomain = async () => {
-    if (!subdomain.trim()) {
-      toast.error(language === 'ar' ? 'يرجى إدخال اسم النطاق الفرعي' : 'Please enter a subdomain name');
-      return;
-    }
-
-    // Basic subdomain validation
-    const subdomainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?$/;
-    if (!subdomainRegex.test(subdomain.trim())) {
-      toast.error(language === 'ar' ? 'صيغة النطاق الفرعي غير صحيحة' : 'Invalid subdomain format');
-      return;
-    }
-
-    setIsSaving(true);
-
-    const fullDomain = `${subdomain.trim().toLowerCase()}.saroarabuilder.com`;
-
-    const { error } = await supabase
-      .from('generated_sites')
-      .update({
-        custom_domain: fullDomain,
-        domain_verified: true, // Auto-verified for subdomains
-        status: 'published',
-      })
-      .eq('id', siteId);
-
-    setIsSaving(false);
-
-    if (error) {
-      toast.error(error.message);
-    } else {
-      toast.success(language === 'ar' ? 'تم تفعيل النطاق الفرعي!' : 'Subdomain activated!');
-      onDomainUpdated();
-      onOpenChange(false);
-    }
   };
 
   const handleSaveDomain = async () => {
@@ -126,11 +90,13 @@ export function DomainSettings({
   const handleRemoveDomain = async () => {
     setIsSaving(true);
 
+    // Reset to auto subdomain
     const { error } = await supabase
       .from('generated_sites')
       .update({
-        custom_domain: null,
-        domain_verified: false,
+        custom_domain: autoSubdomain,
+        domain_verified: true,
+        status: 'published',
       })
       .eq('id', siteId);
 
@@ -140,11 +106,12 @@ export function DomainSettings({
       toast.error(error.message);
     } else {
       setDomain('');
-      setSubdomain('');
-      toast.success(language === 'ar' ? 'تم إزالة النطاق' : 'Domain removed');
+      toast.success(language === 'ar' ? 'تم إعادة تعيين النطاق الفرعي' : 'Domain reset to subdomain');
       onDomainUpdated();
     }
   };
+
+  const isCustomDomain = currentDomain && !currentDomain.endsWith('.saroarabuilder.com');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -156,19 +123,47 @@ export function DomainSettings({
           </DialogTitle>
           <DialogDescription>
             {language === 'ar' 
-              ? `ربط نطاق لموقع "${siteName}"`
-              : `Connect a domain for "${siteName}"`}
+              ? `إدارة نطاق موقع "${siteName}"`
+              : `Manage domain for "${siteName}"`}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* Current Status */}
-          {currentDomain && (
+          {/* Auto Subdomain Info */}
+          <Alert className="bg-primary/5 border-primary/20">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <AlertTitle className="text-primary">
+              {language === 'ar' ? 'النطاق الفرعي التلقائي' : 'Automatic Subdomain'}
+            </AlertTitle>
+            <AlertDescription>
+              <p className="mb-2">
+                {language === 'ar'
+                  ? 'موقعك متاح تلقائياً على الرابط التالي:'
+                  : 'Your site is automatically available at:'}
+              </p>
+              <div className="flex items-center gap-2 bg-background rounded-lg p-2">
+                <span className="font-mono text-sm text-foreground flex-1">
+                  https://{autoSubdomain}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => handleCopy(`https://${autoSubdomain}`, 'auto')}
+                >
+                  {copied === 'auto' ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+
+          {/* Current Custom Domain Status */}
+          {isCustomDomain && currentDomain && (
             <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
               <div>
                 <p className="font-medium text-foreground">{currentDomain}</p>
                 <p className="text-sm text-muted-foreground">
-                  {language === 'ar' ? 'النطاق الحالي' : 'Current domain'}
+                  {language === 'ar' ? 'النطاق المخصص الحالي' : 'Current custom domain'}
                 </p>
               </div>
               <Badge variant={domainVerified ? 'default' : 'secondary'}>
@@ -179,100 +174,27 @@ export function DomainSettings({
             </div>
           )}
 
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="subdomain">
-                {language === 'ar' ? 'نطاق فرعي (مجاني)' : 'Subdomain (Free)'}
-              </TabsTrigger>
-              <TabsTrigger value="custom">
-                {language === 'ar' ? 'نطاق مخصص' : 'Custom Domain'}
-              </TabsTrigger>
-            </TabsList>
+          {/* Custom Domain Input */}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="domain">
+                {language === 'ar' ? 'ربط نطاق مخصص (اختياري)' : 'Connect Custom Domain (Optional)'}
+              </Label>
+              <Input
+                id="domain"
+                placeholder="example.com"
+                value={domain}
+                onChange={(e) => setDomain(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                {language === 'ar' 
+                  ? 'أدخل نطاقك بدون http:// أو www'
+                  : 'Enter your domain without http:// or www'}
+              </p>
+            </div>
 
-            {/* Subdomain Tab */}
-            <TabsContent value="subdomain" className="space-y-4 mt-4">
-              <Alert className="bg-primary/5 border-primary/20">
-                <Sparkles className="h-4 w-4 text-primary" />
-                <AlertTitle className="text-primary">
-                  {language === 'ar' ? 'إعداد تلقائي للعملاء' : 'Automatic for clients'}
-                </AlertTitle>
-                <AlertDescription className="space-y-2">
-                  <p>
-                    {language === 'ar'
-                      ? 'لكي تعمل روابط العملاء مثل sultanbites.saroarabuilder.com تلقائياً مع HTTPS، يلزم إعداد واحد فقط على الدومين (مرة واحدة):'
-                      : 'To make client links like sultanbites.saroarabuilder.com work automatically with HTTPS, you need a one-time domain setup:'}
-                  </p>
-                  <ol className="list-decimal ps-5 space-y-1">
-                    <li>
-                      {language === 'ar'
-                        ? 'فعّل Cloudflare كخدمة DNS للدومين (تغيير Nameservers مرة واحدة).'
-                        : 'Enable Cloudflare as your domain DNS (change nameservers once).'}
-                    </li>
-                    <li>
-                      {language === 'ar'
-                        ? 'داخل Cloudflare: أنشئ سجلات A باسم @ و * إلى 185.158.133.1 واجعلها "DNS only" (السحابة الرمادية) حتى لا يظهر خطأ 1000.'
-                        : 'In Cloudflare: create A records @ and * to 185.158.133.1 and set them to “DNS only” (grey cloud) to avoid Error 1000.'}
-                    </li>
-                  </ol>
-                  <p className="text-sm text-muted-foreground">
-                    {language === 'ar'
-                      ? 'بعدها أي عميل يختار نطاقه الفرعي سيعمل بدون تدخل منك.'
-                      : 'After that, any client subdomain they choose will work without your involvement.'}
-                  </p>
-                </AlertDescription>
-              </Alert>
-
-              <div className="space-y-2">
-                <Label htmlFor="subdomain">
-                  {language === 'ar' ? 'اسم النطاق الفرعي' : 'Subdomain Name'}
-                </Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="subdomain"
-                    placeholder={language === 'ar' ? 'اسم-العمل' : 'business-name'}
-                    value={subdomain}
-                    onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                    className="flex-1"
-                  />
-                  <span className="text-muted-foreground text-sm">.saroarabuilder.com</span>
-                </div>
-                {subdomain && (
-                  <p className="text-sm text-primary">
-                    {language === 'ar' ? 'رابط الموقع:' : 'Site URL:'} https://{subdomain}.saroarabuilder.com
-                  </p>
-                )}
-              </div>
-
-              <Button 
-                onClick={handleSaveSubdomain} 
-                disabled={isSaving || !subdomain.trim()}
-                className="w-full"
-              >
-                {isSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                {language === 'ar' ? 'تفعيل النطاق الفرعي' : 'Activate Subdomain'}
-              </Button>
-            </TabsContent>
-
-            {/* Custom Domain Tab */}
-            <TabsContent value="custom" className="space-y-4 mt-4">
-              <div className="space-y-2">
-                <Label htmlFor="domain">
-                  {language === 'ar' ? 'النطاق المخصص' : 'Custom Domain'}
-                </Label>
-                <Input
-                  id="domain"
-                  placeholder="example.com"
-                  value={domain}
-                  onChange={(e) => setDomain(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  {language === 'ar' 
-                    ? 'أدخل نطاقك بدون http:// أو www'
-                    : 'Enter your domain without http:// or www'}
-                </p>
-              </div>
-
-              {/* DNS Instructions */}
+            {/* DNS Instructions */}
+            {domain && (
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>
@@ -342,31 +264,31 @@ export function DomainSettings({
                   </p>
                 </AlertDescription>
               </Alert>
+            )}
 
-              <Button 
-                onClick={handleSaveDomain} 
-                disabled={isSaving || !domain.trim()}
-                className="w-full"
-              >
-                {isSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                {language === 'ar' ? 'حفظ النطاق المخصص' : 'Save Custom Domain'}
-              </Button>
-            </TabsContent>
-          </Tabs>
+            <Button 
+              onClick={handleSaveDomain} 
+              disabled={isSaving || !domain.trim()}
+              className="w-full"
+            >
+              {isSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              {language === 'ar' ? 'حفظ النطاق المخصص' : 'Save Custom Domain'}
+            </Button>
+          </div>
         </div>
 
         <DialogFooter className="flex gap-2 sm:justify-between">
-          {currentDomain && (
+          {isCustomDomain && (
             <Button
               variant="destructive"
               onClick={handleRemoveDomain}
               disabled={isSaving}
             >
-              {language === 'ar' ? 'إزالة النطاق' : 'Remove Domain'}
+              {language === 'ar' ? 'إعادة تعيين للنطاق الفرعي' : 'Reset to Subdomain'}
             </Button>
           )}
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            {language === 'ar' ? 'إلغاء' : 'Cancel'}
+            {language === 'ar' ? 'إغلاق' : 'Close'}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -79,22 +79,58 @@ export function WebsitePreview({ business }: WebsitePreviewProps) {
     
     setIsSaving(true);
     
-    const slug = business.name
+    // Check if place_id already exists
+    const { data: existingSite } = await supabase
+      .from('generated_sites')
+      .select('id, slug')
+      .eq('place_id', business.placeId)
+      .maybeSingle();
+    
+    if (existingSite) {
+      setIsSaving(false);
+      toast.info(
+        language === 'ar' 
+          ? `هذا البزنس موجود مسبقاً: ${existingSite.slug}.saroarabuilder.com`
+          : `This business already exists: ${existingSite.slug}.saroarabuilder.com`
+      );
+      return;
+    }
+    
+    // Generate clean slug from business name
+    const baseSlug = business.name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
     
-    const uniqueSlug = `${slug}-${Date.now()}`;
+    // Check for duplicate slugs and add number if needed
+    const { data: existingSlugs } = await supabase
+      .from('generated_sites')
+      .select('slug')
+      .like('slug', `${baseSlug}%`);
+    
+    let finalSlug = baseSlug;
+    if (existingSlugs && existingSlugs.length > 0) {
+      const slugSet = new Set(existingSlugs.map(s => s.slug));
+      if (slugSet.has(baseSlug)) {
+        let counter = 2;
+        while (slugSet.has(`${baseSlug}-${counter}`)) {
+          counter++;
+        }
+        finalSlug = `${baseSlug}-${counter}`;
+      }
+    }
     
     const { error } = await supabase
       .from('generated_sites')
       .insert([{
         site_name: business.name,
-        slug: uniqueSlug,
+        slug: finalSlug,
         place_id: business.placeId,
         business_data: JSON.parse(JSON.stringify(business)),
-        status: 'draft',
-        public_url: `/site/${uniqueSlug}`,
+        status: 'published',
+        public_url: `/site/${finalSlug}`,
+        custom_domain: `${finalSlug}.saroarabuilder.com`,
+        domain_verified: true,
         user_id: user.id,
       }]);
 
@@ -103,7 +139,11 @@ export function WebsitePreview({ business }: WebsitePreviewProps) {
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success(t('siteSaved'));
+      toast.success(
+        language === 'ar'
+          ? `تم الحفظ! رابط الموقع: ${finalSlug}.saroarabuilder.com`
+          : `Saved! Site URL: ${finalSlug}.saroarabuilder.com`
+      );
     }
   };
 
