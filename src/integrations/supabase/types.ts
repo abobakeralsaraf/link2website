@@ -14,7 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      generated_sites: {
+        Row: {
+          business_data: Json
+          created_at: string | null
+          custom_domain: string | null
+          domain_verified: boolean | null
+          id: string
+          place_id: string
+          public_url: string | null
+          site_name: string
+          slug: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          business_data: Json
+          created_at?: string | null
+          custom_domain?: string | null
+          domain_verified?: boolean | null
+          id?: string
+          place_id: string
+          public_url?: string | null
+          site_name: string
+          slug: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          business_data?: Json
+          created_at?: string | null
+          custom_domain?: string | null
+          domain_verified?: boolean | null
+          id?: string
+          place_id?: string
+          public_url?: string | null
+          site_name?: string
+          slug?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
