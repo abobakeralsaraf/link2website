@@ -111,6 +111,37 @@ export const translations = {
     // WhatsApp (for client sites - uses dynamic data)
     whatsappGreeting: 'Hello! I found your business and would like to know more.',
     
+    // Auth
+    signIn: 'Sign In',
+    signUp: 'Sign Up',
+    email: 'Email',
+    emailPlaceholder: 'Enter your email...',
+    password: 'Password',
+    passwordPlaceholder: 'Enter your password...',
+    fullName: 'Full Name',
+    fullNamePlaceholder: 'Enter your full name...',
+    authDescription: 'Sign in to manage your generated websites',
+    accountCreated: 'Account created successfully!',
+    welcomeMessage: 'Welcome to PlaceID2Site!',
+    orContinueWith: 'Or continue with',
+    continueWithGoogle: 'Continue with Google',
+    signOut: 'Sign Out',
+    
+    // Dashboard
+    welcomeBack: 'Welcome back',
+    adminDashboardDescription: 'Manage all sites and users from here',
+    clientDashboardDescription: 'Manage your generated websites',
+    generateNewSite: 'Generate New Site',
+    generateNewSiteDesc: 'Create a new website from Google Maps data',
+    startGenerating: 'Start Generating',
+    mySites: 'My Sites',
+    mySitesDesc: 'View and manage your generated websites',
+    viewSites: 'View Sites',
+    manageUsers: 'Manage Users',
+    manageUsersDesc: 'View and manage all registered users',
+    viewUsers: 'View Users',
+    dashboard: 'Dashboard',
+    
     // Generated Sites Admin
     generatedSites: 'Generated Sites',
     generatedSitesDescription: 'Manage all your generated client websites from here.',
@@ -238,6 +269,37 @@ export const translations = {
     
     // WhatsApp
     whatsappGreeting: 'مرحباً! وجدت نشاطك التجاري وأود معرفة المزيد.',
+    
+    // Auth
+    signIn: 'تسجيل الدخول',
+    signUp: 'إنشاء حساب',
+    email: 'البريد الإلكتروني',
+    emailPlaceholder: 'أدخل بريدك الإلكتروني...',
+    password: 'كلمة المرور',
+    passwordPlaceholder: 'أدخل كلمة المرور...',
+    fullName: 'الاسم الكامل',
+    fullNamePlaceholder: 'أدخل اسمك الكامل...',
+    authDescription: 'سجل دخولك لإدارة مواقعك المُنشأة',
+    accountCreated: 'تم إنشاء الحساب بنجاح!',
+    welcomeMessage: 'مرحباً بك في PlaceID2Site!',
+    orContinueWith: 'أو تابع باستخدام',
+    continueWithGoogle: 'المتابعة عبر Google',
+    signOut: 'تسجيل الخروج',
+    
+    // Dashboard
+    welcomeBack: 'مرحباً بعودتك',
+    adminDashboardDescription: 'أدر جميع المواقع والمستخدمين من هنا',
+    clientDashboardDescription: 'أدر مواقعك المُنشأة',
+    generateNewSite: 'إنشاء موقع جديد',
+    generateNewSiteDesc: 'أنشئ موقعاً جديداً من بيانات خرائط جوجل',
+    startGenerating: 'ابدأ الإنشاء',
+    mySites: 'مواقعي',
+    mySitesDesc: 'عرض وإدارة مواقعك المُنشأة',
+    viewSites: 'عرض المواقع',
+    manageUsers: 'إدارة المستخدمين',
+    manageUsersDesc: 'عرض وإدارة جميع المستخدمين المسجلين',
+    viewUsers: 'عرض المستخدمين',
+    dashboard: 'لوحة التحكم',
     
     // Generated Sites Admin
     generatedSites: 'المواقع المُنشأة',

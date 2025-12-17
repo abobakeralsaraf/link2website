@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useAuth } from '@/hooks/useAuth';
 import { Header } from '@/components/Header';
 import { GeneratedSitesList } from '@/components/admin/GeneratedSitesList';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,15 +19,26 @@ export interface GeneratedSiteRow {
   public_url: string | null;
   created_at: string;
   updated_at: string;
+  user_id: string | null;
 }
 
 export default function GeneratedSites() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const { user, isAdmin, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const [sites, setSites] = useState<GeneratedSiteRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/auth');
+    }
+  }, [user, authLoading, navigate]);
+
   const fetchSites = async () => {
+    if (!user) return;
+    
     setIsLoading(true);
     const { data, error } = await supabase
       .from('generated_sites')
@@ -41,8 +54,10 @@ export default function GeneratedSites() {
   };
 
   useEffect(() => {
-    fetchSites();
-  }, []);
+    if (user) {
+      fetchSites();
+    }
+  }, [user]);
 
   const handleStatusChange = async (id: string, status: GeneratedSiteRow['status']) => {
     const { error } = await supabase
@@ -69,7 +84,7 @@ export default function GeneratedSites() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" dir={language === 'ar' ? 'rtl' : 'ltr'}>
       <Header />
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-8">

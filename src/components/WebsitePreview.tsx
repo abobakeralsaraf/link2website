@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useAuth } from '@/hooks/useAuth';
 import { BusinessData } from '@/lib/types';
 import { GeneratedWebsite } from './generated/GeneratedWebsite';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Download, Share2, ExternalLink, Monitor, Smartphone, Tablet, Check, Save, Loader2 } from 'lucide-react';
+import { Download, Share2, ExternalLink, Monitor, Smartphone, Tablet, Check, Save, Loader2, LogIn } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { Link } from 'react-router-dom';
 
 interface WebsitePreviewProps {
   business: BusinessData;
@@ -16,6 +18,7 @@ type ViewMode = 'desktop' | 'tablet' | 'mobile';
 
 export function WebsitePreview({ business }: WebsitePreviewProps) {
   const { t, language } = useLanguage();
+  const { user } = useAuth();
   const [viewMode, setViewMode] = useState<ViewMode>('desktop');
   const [copied, setCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -68,6 +71,11 @@ export function WebsitePreview({ business }: WebsitePreviewProps) {
   };
 
   const handleSaveSite = async () => {
+    if (!user) {
+      toast.error(language === 'ar' ? 'يجب تسجيل الدخول أولاً' : 'Please sign in first');
+      return;
+    }
+    
     setIsSaving(true);
     
     const slug = business.name
@@ -86,6 +94,7 @@ export function WebsitePreview({ business }: WebsitePreviewProps) {
         business_data: JSON.parse(JSON.stringify(business)),
         status: 'draft',
         public_url: `/site/${uniqueSlug}`,
+        user_id: user.id,
       }]);
 
     setIsSaving(false);
@@ -133,10 +142,19 @@ export function WebsitePreview({ business }: WebsitePreviewProps) {
         </CardHeader>
         <CardContent className="pt-0">
           <div className="flex flex-wrap gap-3">
-            <Button variant="default" onClick={handleSaveSite} disabled={isSaving}>
-              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              {t('saveSite')}
-            </Button>
+            {user ? (
+              <Button variant="default" onClick={handleSaveSite} disabled={isSaving}>
+                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {t('saveSite')}
+              </Button>
+            ) : (
+              <Link to="/auth">
+                <Button variant="default">
+                  <LogIn className="h-4 w-4" />
+                  {t('signIn')} {language === 'ar' ? 'لحفظ الموقع' : 'to Save Site'}
+                </Button>
+              </Link>
+            )}
             <Button variant="outline" onClick={handleDownload}>
               <Download className="h-4 w-4" />
               {t('downloadHtml')}
