@@ -9,6 +9,7 @@ export const translations = {
     // Admin Navigation
     navDashboard: 'Dashboard',
     navGenerator: 'Generate Site',
+    navGeneratedSites: 'Generated Sites',
     
     // Admin Hero
     adminBadge: 'Website Generator Tool',
@@ -76,6 +77,7 @@ export const translations = {
     getDirections: 'Get Directions',
     downloadHtml: 'Download HTML',
     shareWebsite: 'Share',
+    saveSite: 'Save Site',
     
     // Reviews
     rating: 'Rating',
@@ -98,6 +100,7 @@ export const translations = {
     // Success
     websiteGenerated: 'Client website generated successfully!',
     copiedToClipboard: 'Copied to clipboard!',
+    siteSaved: 'Site saved successfully!',
     
     // API Key
     apiKeyTitle: 'Google Places API Key',
@@ -107,6 +110,24 @@ export const translations = {
     
     // WhatsApp (for client sites - uses dynamic data)
     whatsappGreeting: 'Hello! I found your business and would like to know more.',
+    
+    // Generated Sites Admin
+    generatedSites: 'Generated Sites',
+    generatedSitesDescription: 'Manage all your generated client websites from here.',
+    noSitesYet: 'No sites generated yet',
+    noSitesDescription: 'Generate your first client website to see it here.',
+    siteName: 'Site Name',
+    slug: 'Slug',
+    status: 'Status',
+    customDomain: 'Custom Domain',
+    createdAt: 'Created',
+    openSite: 'Open Site',
+    markPublished: 'Mark as Published',
+    readyForDomain: 'Ready for Domain',
+    delete: 'Delete',
+    statusDraft: 'Draft',
+    statusPublished: 'Published',
+    statusReadyForDomain: 'Ready for Domain',
   },
   ar: {
     // App
@@ -116,6 +137,7 @@ export const translations = {
     // Admin Navigation
     navDashboard: 'لوحة التحكم',
     navGenerator: 'إنشاء موقع',
+    navGeneratedSites: 'المواقع المُنشأة',
     
     // Admin Hero
     adminBadge: 'أداة إنشاء المواقع',
@@ -183,6 +205,7 @@ export const translations = {
     getDirections: 'الحصول على الاتجاهات',
     downloadHtml: 'تحميل HTML',
     shareWebsite: 'مشاركة',
+    saveSite: 'حفظ الموقع',
     
     // Reviews
     rating: 'التقييم',
@@ -205,6 +228,7 @@ export const translations = {
     // Success
     websiteGenerated: 'تم إنشاء موقع العميل بنجاح!',
     copiedToClipboard: 'تم النسخ إلى الحافظة!',
+    siteSaved: 'تم حفظ الموقع بنجاح!',
     
     // API Key
     apiKeyTitle: 'مفتاح Google Places API',
@@ -214,6 +238,24 @@ export const translations = {
     
     // WhatsApp
     whatsappGreeting: 'مرحباً! وجدت نشاطك التجاري وأود معرفة المزيد.',
+    
+    // Generated Sites Admin
+    generatedSites: 'المواقع المُنشأة',
+    generatedSitesDescription: 'أدر جميع مواقع عملائك المُنشأة من هنا.',
+    noSitesYet: 'لا توجد مواقع مُنشأة بعد',
+    noSitesDescription: 'أنشئ أول موقع عميل لرؤيته هنا.',
+    siteName: 'اسم الموقع',
+    slug: 'الرابط',
+    status: 'الحالة',
+    customDomain: 'النطاق المخصص',
+    createdAt: 'تاريخ الإنشاء',
+    openSite: 'فتح الموقع',
+    markPublished: 'تعيين كمنشور',
+    readyForDomain: 'جاهز للنطاق',
+    delete: 'حذف',
+    statusDraft: 'مسودة',
+    statusPublished: 'منشور',
+    statusReadyForDomain: 'جاهز للنطاق',
   },
 } as const;
 
