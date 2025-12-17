@@ -1,19 +1,31 @@
 import { useState } from 'react';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useAuth } from '@/hooks/useAuth';
 import { LanguageToggle } from './LanguageToggle';
 import { NavLink } from './NavLink';
-import { Menu, X, Layers } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Button } from './ui/button';
+import { Menu, X, Layers, LogOut, LogIn } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { t } = useLanguage();
+  const { user, isAdmin, signOut } = useAuth();
+  const navigate = useNavigate();
 
-  const navLinks = [
-    { to: '/', label: t('navDashboard') },
+  const navLinks = user ? [
+    { to: '/dashboard', label: t('dashboard') },
     { to: '/', label: t('navGenerator') },
     { to: '/generated-sites', label: t('navGeneratedSites') },
+    ...(isAdmin ? [{ to: '/admin/users', label: t('manageUsers') }] : []),
+  ] : [
+    { to: '/', label: t('navGenerator') },
   ];
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur-lg border-b border-border/50 shadow-sm">
@@ -37,6 +49,25 @@ export function Header() {
           {/* Right Side Actions */}
           <div className="flex items-center gap-3">
             <LanguageToggle />
+            
+            {user ? (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleSignOut}
+                className="hidden md:flex items-center gap-2"
+              >
+                <LogOut className="h-4 w-4" />
+                {t('signOut')}
+              </Button>
+            ) : (
+              <Link to="/auth" className="hidden md:block">
+                <Button size="sm" className="flex items-center gap-2">
+                  <LogIn className="h-4 w-4" />
+                  {t('signIn')}
+                </Button>
+              </Link>
+            )}
             
             {/* Mobile Menu Button */}
             <button
@@ -66,6 +97,28 @@ export function Header() {
                   {link.label}
                 </NavLink>
               ))}
+              
+              {user ? (
+                <button
+                  onClick={() => {
+                    handleSignOut();
+                    setIsMenuOpen(false);
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                >
+                  <LogOut className="h-4 w-4" />
+                  {t('signOut')}
+                </button>
+              ) : (
+                <Link 
+                  to="/auth" 
+                  onClick={() => setIsMenuOpen(false)}
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                >
+                  <LogIn className="h-4 w-4" />
+                  {t('signIn')}
+                </Link>
+              )}
             </div>
           </nav>
         )}
