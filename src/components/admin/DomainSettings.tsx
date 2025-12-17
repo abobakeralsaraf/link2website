@@ -194,12 +194,31 @@ export function DomainSettings({
               <Alert className="bg-primary/5 border-primary/20">
                 <Sparkles className="h-4 w-4 text-primary" />
                 <AlertTitle className="text-primary">
-                  {language === 'ar' ? 'تفعيل فوري!' : 'Instant Activation!'}
+                  {language === 'ar' ? 'إعداد تلقائي للعملاء' : 'Automatic for clients'}
                 </AlertTitle>
-                <AlertDescription>
-                  {language === 'ar' 
-                    ? 'النطاق الفرعي يعمل فوراً بدون إعدادات DNS'
-                    : 'Subdomain works instantly without DNS configuration'}
+                <AlertDescription className="space-y-2">
+                  <p>
+                    {language === 'ar'
+                      ? 'لكي تعمل روابط العملاء مثل sultanbites.saroarabuilder.com تلقائياً مع HTTPS، يلزم إعداد واحد فقط على الدومين (مرة واحدة):'
+                      : 'To make client links like sultanbites.saroarabuilder.com work automatically with HTTPS, you need a one-time domain setup:'}
+                  </p>
+                  <ol className="list-decimal ps-5 space-y-1">
+                    <li>
+                      {language === 'ar'
+                        ? 'فعّل Cloudflare كـ DNS/Proxy للدومين (تغيير Nameservers مرة واحدة).'
+                        : 'Enable Cloudflare as DNS/Proxy for your domain (change nameservers once).'}
+                    </li>
+                    <li>
+                      {language === 'ar'
+                        ? 'داخل Cloudflare: اجعل سجلات A (@ و *) تشير إلى 185.158.133.1 وفعّل "Proxy" (السحابة البرتقالية).'
+                        : 'In Cloudflare: set A records (@ and *) to 185.158.133.1 and turn on “Proxy” (orange cloud).'}
+                    </li>
+                  </ol>
+                  <p className="text-sm text-muted-foreground">
+                    {language === 'ar'
+                      ? 'بعدها أي عميل يختار نطاقه الفرعي سيعمل بدون تدخل منك.'
+                      : 'After that, any client subdomain they choose will work without your involvement.'}
+                  </p>
                 </AlertDescription>
               </Alert>
 
