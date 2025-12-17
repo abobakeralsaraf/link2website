@@ -6,6 +6,13 @@ import { Header } from '@/components/Header';
 import { GeneratedSitesList } from '@/components/admin/GeneratedSitesList';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export interface GeneratedSiteRow {
   id: string;
@@ -20,6 +27,13 @@ export interface GeneratedSiteRow {
   created_at: string;
   updated_at: string;
   user_id: string | null;
+  owner_email?: string;
+}
+
+interface UserProfile {
+  id: string;
+  email: string;
+  full_name: string | null;
 }
 
 export default function GeneratedSites() {
@@ -29,6 +43,9 @@ export default function GeneratedSites() {
   const [sites, setSites] = useState<GeneratedSiteRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [userFilter, setUserFilter] = useState<string>('all');
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -40,16 +57,49 @@ export default function GeneratedSites() {
     if (!user) return;
     
     setIsLoading(true);
-    const { data, error } = await supabase
+    
+    // Fetch sites
+    const { data: sitesData, error: sitesError } = await supabase
       .from('generated_sites')
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (error) {
-      setError(error.message);
-    } else {
-      setSites((data as GeneratedSiteRow[]) || []);
+    if (sitesError) {
+      setError(sitesError.message);
+      setIsLoading(false);
+      return;
     }
+
+    // If admin, fetch user profiles to get owner emails
+    if (isAdmin && sitesData) {
+      const userIds = [...new Set(sitesData.map(s => s.user_id).filter(Boolean))];
+      
+      if (userIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, email, full_name')
+          .in('id', userIds);
+
+        if (profilesData) {
+          setUsers(profilesData);
+          
+          // Map owner emails to sites
+          const sitesWithOwners = sitesData.map(site => ({
+            ...site,
+            owner_email: profilesData.find(p => p.id === site.user_id)?.email || undefined,
+          })) as GeneratedSiteRow[];
+          
+          setSites(sitesWithOwners);
+        } else {
+          setSites(sitesData as GeneratedSiteRow[]);
+        }
+      } else {
+        setSites(sitesData as GeneratedSiteRow[]);
+      }
+    } else {
+      setSites((sitesData as GeneratedSiteRow[]) || []);
+    }
+    
     setIsLoading(false);
   };
 
@@ -57,7 +107,7 @@ export default function GeneratedSites() {
     if (user) {
       fetchSites();
     }
-  }, [user]);
+  }, [user, isAdmin]);
 
   const handleStatusChange = async (id: string, status: GeneratedSiteRow['status']) => {
     const { error } = await supabase
@@ -83,18 +133,82 @@ export default function GeneratedSites() {
     }
   };
 
+  // Filter sites
+  const filteredSites = sites.filter(site => {
+    const matchesStatus = statusFilter === 'all' || site.status === statusFilter;
+    const matchesUser = userFilter === 'all' || site.user_id === userFilter;
+    return matchesStatus && matchesUser;
+  });
+
   return (
     <div className="min-h-screen bg-background" dir={language === 'ar' ? 'rtl' : 'ltr'}>
       <Header />
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">
-            {t('generatedSites')}
+            {isAdmin 
+              ? (language === 'ar' ? 'جميع المواقع المُنشأة' : 'All Generated Sites')
+              : t('generatedSites')}
           </h1>
           <p className="text-muted-foreground">
-            {t('generatedSitesDescription')}
+            {isAdmin
+              ? (language === 'ar' ? 'عرض وإدارة جميع المواقع المُنشأة من جميع المستخدمين' : 'View and manage all generated sites from all users')
+              : t('generatedSitesDescription')}
           </p>
         </div>
+
+        {/* Filters - Admin Only */}
+        {isAdmin && !isLoading && sites.length > 0 && (
+          <div className="flex flex-wrap gap-4 mb-6">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                {language === 'ar' ? 'الحالة:' : 'Status:'}
+              </span>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    {language === 'ar' ? 'الكل' : 'All'}
+                  </SelectItem>
+                  <SelectItem value="draft">
+                    {language === 'ar' ? 'مسودة' : 'Draft'}
+                  </SelectItem>
+                  <SelectItem value="published">
+                    {language === 'ar' ? 'منشور' : 'Published'}
+                  </SelectItem>
+                  <SelectItem value="ready_for_domain">
+                    {language === 'ar' ? 'جاهز للنطاق' : 'Ready for Domain'}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {users.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  {language === 'ar' ? 'المالك:' : 'Owner:'}
+                </span>
+                <Select value={userFilter} onValueChange={setUserFilter}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      {language === 'ar' ? 'جميع المستخدمين' : 'All Users'}
+                    </SelectItem>
+                    {users.map(u => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.full_name || u.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+        )}
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
@@ -106,10 +220,11 @@ export default function GeneratedSites() {
           </div>
         ) : (
           <GeneratedSitesList 
-            sites={sites} 
+            sites={filteredSites} 
             onStatusChange={handleStatusChange}
             onDelete={handleDelete}
             onRefresh={fetchSites}
+            showOwner={isAdmin}
           />
         )}
       </main>

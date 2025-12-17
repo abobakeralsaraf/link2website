@@ -20,7 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ExternalLink, MoreVertical, Trash2, Globe, FileCheck, Link2 } from 'lucide-react';
+import { ExternalLink, MoreVertical, Trash2, Globe, FileCheck, Link2, User } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface GeneratedSitesListProps {
@@ -28,6 +28,7 @@ interface GeneratedSitesListProps {
   onStatusChange: (id: string, status: GeneratedSiteRow['status']) => void;
   onDelete: (id: string) => void;
   onRefresh: () => void;
+  showOwner?: boolean;
 }
 
 export function GeneratedSitesList({ 
@@ -35,6 +36,7 @@ export function GeneratedSitesList({
   onStatusChange, 
   onDelete,
   onRefresh,
+  showOwner = false,
 }: GeneratedSitesListProps) {
   const { t, language } = useLanguage();
   const [domainDialogSite, setDomainDialogSite] = useState<GeneratedSiteRow | null>(null);
@@ -61,6 +63,11 @@ export function GeneratedSitesList({
             <TableRow>
               <TableHead>{t('siteName')}</TableHead>
               <TableHead>{t('slug')}</TableHead>
+              {showOwner && (
+                <TableHead>
+                  {language === 'ar' ? 'المالك' : 'Owner'}
+                </TableHead>
+              )}
               <TableHead>{t('status')}</TableHead>
               <TableHead>{t('customDomain')}</TableHead>
               <TableHead>{t('createdAt')}</TableHead>
@@ -72,6 +79,18 @@ export function GeneratedSitesList({
               <TableRow key={site.id}>
                 <TableCell className="font-medium">{site.site_name}</TableCell>
                 <TableCell className="text-muted-foreground">/{site.slug}</TableCell>
+                {showOwner && (
+                  <TableCell>
+                    {site.owner_email ? (
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">{site.owner_email}</span>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                )}
                 <TableCell>
                   <SiteStatusBadge status={site.status} />
                 </TableCell>

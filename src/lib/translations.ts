@@ -159,6 +159,29 @@ export const translations = {
     statusDraft: 'Draft',
     statusPublished: 'Published',
     statusReadyForDomain: 'Ready for Domain',
+    
+    // Stats
+    totalSites: 'Total Sites',
+    publishedCount: 'Published',
+    withDomain: 'With Domain',
+    totalUsers: 'Users',
+    
+    // Filters
+    filterByStatus: 'Status:',
+    filterByOwner: 'Owner:',
+    allStatuses: 'All',
+    allUsers: 'All Users',
+    owner: 'Owner',
+    
+    // Domain
+    subdomainFree: 'Subdomain (Free)',
+    customDomainOption: 'Custom Domain',
+    instantActivation: 'Instant Activation!',
+    subdomainInstant: 'Subdomain works instantly without DNS configuration',
+    subdomainName: 'Subdomain Name',
+    siteUrl: 'Site URL:',
+    activateSubdomain: 'Activate Subdomain',
+    saveCustomDomain: 'Save Custom Domain',
   },
   ar: {
     // App
@@ -318,6 +341,29 @@ export const translations = {
     statusDraft: 'مسودة',
     statusPublished: 'منشور',
     statusReadyForDomain: 'جاهز للنطاق',
+    
+    // Stats
+    totalSites: 'إجمالي المواقع',
+    publishedCount: 'منشور',
+    withDomain: 'مع نطاق',
+    totalUsers: 'المستخدمين',
+    
+    // Filters
+    filterByStatus: 'الحالة:',
+    filterByOwner: 'المالك:',
+    allStatuses: 'الكل',
+    allUsers: 'جميع المستخدمين',
+    owner: 'المالك',
+    
+    // Domain
+    subdomainFree: 'نطاق فرعي (مجاني)',
+    customDomainOption: 'نطاق مخصص',
+    instantActivation: 'تفعيل فوري!',
+    subdomainInstant: 'النطاق الفرعي يعمل فوراً بدون إعدادات DNS',
+    subdomainName: 'اسم النطاق الفرعي',
+    siteUrl: 'رابط الموقع:',
+    activateSubdomain: 'تفعيل النطاق الفرعي',
+    saveCustomDomain: 'حفظ النطاق المخصص',
   },
 } as const;
 
