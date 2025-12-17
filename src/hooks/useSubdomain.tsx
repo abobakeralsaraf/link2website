@@ -36,13 +36,13 @@ export function useSubdomain(): SubdomainSite {
       // Check if it's a subdomain of saroarabuilder.com
       if (hostname.endsWith('.saroarabuilder.com')) {
         setIsSubdomain(true);
-        const subdomain = hostname.replace('.saroarabuilder.com', '');
-        const customDomain = `${subdomain}.saroarabuilder.com`;
+        const slug = hostname.replace('.saroarabuilder.com', '');
 
+        // Query by slug directly (subdomain = slug)
         const { data, error: fetchError } = await supabase
           .from('generated_sites')
           .select('business_data')
-          .eq('custom_domain', customDomain)
+          .eq('slug', slug)
           .eq('status', 'published')
           .maybeSingle();
 

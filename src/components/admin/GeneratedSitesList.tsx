@@ -171,6 +171,7 @@ export function GeneratedSitesList({
         <DomainSettings
           siteId={domainDialogSite.id}
           siteName={domainDialogSite.site_name}
+          slug={domainDialogSite.slug}
           currentDomain={domainDialogSite.custom_domain}
           domainVerified={domainDialogSite.domain_verified}
           open={!!domainDialogSite}
