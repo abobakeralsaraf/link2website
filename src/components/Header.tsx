@@ -1,77 +1,73 @@
 import { useState } from 'react';
 import { useLanguage } from '@/hooks/useLanguage';
 import { LanguageToggle } from './LanguageToggle';
-import { MapPin, Menu, X } from 'lucide-react';
-import { Button } from './ui/button';
+import { NavLink } from './NavLink';
+import { Menu, X, Layers } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export function Header() {
-  const { t } = useLanguage();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { t } = useLanguage();
 
   const navLinks = [
-    { key: 'navDashboard', href: '#' },
-    { key: 'navGenerator', href: '#generator' },
+    { to: '/', label: t('navDashboard') },
+    { to: '/', label: t('navGenerator') },
+    { to: '/generated-sites', label: t('navGeneratedSites') },
   ];
 
   return (
-    <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-md border-b border-border/50 shadow-sm">
+    <header className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur-lg border-b border-border/50 shadow-sm">
       <div className="max-w-7xl mx-auto px-4">
-        {/* Main navbar */}
-        <div className="h-16 flex items-center justify-between">
+        <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <a href="#" className="flex items-center gap-3 group">
-            <div className="p-2 rounded-xl gradient-primary transition-transform group-hover:scale-105">
-              <MapPin className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <span className="text-xl font-bold text-gradient">{t('appName')}</span>
-          </a>
+          <Link to="/" className="flex items-center gap-2 text-primary hover:opacity-90 transition-opacity">
+            <Layers className="h-7 w-7" />
+            <span className="font-bold text-xl tracking-tight">{t('appName')}</span>
+          </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => (
-              <a
-                key={link.key}
-                href={link.href}
-                className="px-4 py-2 text-sm font-medium text-foreground/80 hover:text-primary rounded-lg hover:bg-secondary/50 transition-all"
-              >
-                {t(link.key as any)}
-              </a>
+              <NavLink key={link.label} to={link.to}>
+                {link.label}
+              </NavLink>
             ))}
           </nav>
 
-          {/* Right side actions */}
+          {/* Right Side Actions */}
           <div className="flex items-center gap-3">
             <LanguageToggle />
             
-            {/* Mobile menu button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden"
+            {/* Mobile Menu Button */}
+            <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="md:hidden p-2 rounded-lg hover:bg-secondary transition-colors"
               aria-label="Toggle menu"
             >
-              {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </Button>
+              {isMenuOpen ? (
+                <X className="h-5 w-5 text-foreground" />
+              ) : (
+                <Menu className="h-5 w-5 text-foreground" />
+              )}
+            </button>
           </div>
         </div>
 
         {/* Mobile Navigation */}
         {isMenuOpen && (
-          <div className="md:hidden border-t border-border/50 py-4 animate-fade-in">
-            <nav className="flex flex-col gap-1">
+          <nav className="md:hidden py-4 border-t border-border/50">
+            <div className="flex flex-col gap-1">
               {navLinks.map((link) => (
-                <a
-                  key={link.key}
-                  href={link.href}
-                  className="px-4 py-3 text-sm font-medium text-foreground/80 hover:text-primary rounded-lg hover:bg-secondary/50 transition-all"
+                <NavLink 
+                  key={link.label} 
+                  to={link.to} 
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  {t(link.key as any)}
-                </a>
+                  {link.label}
+                </NavLink>
               ))}
-            </nav>
-          </div>
+            </div>
+          </nav>
         )}
       </div>
     </header>

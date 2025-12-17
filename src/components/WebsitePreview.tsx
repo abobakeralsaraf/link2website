@@ -4,8 +4,9 @@ import { BusinessData } from '@/lib/types';
 import { GeneratedWebsite } from './generated/GeneratedWebsite';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Download, Share2, ExternalLink, Monitor, Smartphone, Tablet, Check } from 'lucide-react';
+import { Download, Share2, ExternalLink, Monitor, Smartphone, Tablet, Check, Save, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface WebsitePreviewProps {
   business: BusinessData;
@@ -17,6 +18,7 @@ export function WebsitePreview({ business }: WebsitePreviewProps) {
   const { t, language } = useLanguage();
   const [viewMode, setViewMode] = useState<ViewMode>('desktop');
   const [copied, setCopied] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const getViewModeStyles = () => {
     switch (viewMode) {
@@ -65,6 +67,36 @@ export function WebsitePreview({ business }: WebsitePreviewProps) {
     }
   };
 
+  const handleSaveSite = async () => {
+    setIsSaving(true);
+    
+    const slug = business.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+    
+    const uniqueSlug = `${slug}-${Date.now()}`;
+    
+    const { error } = await supabase
+      .from('generated_sites')
+      .insert([{
+        site_name: business.name,
+        slug: uniqueSlug,
+        place_id: business.placeId,
+        business_data: JSON.parse(JSON.stringify(business)),
+        status: 'draft',
+        public_url: `/site/${uniqueSlug}`,
+      }]);
+
+    setIsSaving(false);
+    
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success(t('siteSaved'));
+    }
+  };
+
   return (
     <div className="w-full max-w-7xl mx-auto px-4 space-y-6">
       {/* Controls */}
@@ -101,7 +133,11 @@ export function WebsitePreview({ business }: WebsitePreviewProps) {
         </CardHeader>
         <CardContent className="pt-0">
           <div className="flex flex-wrap gap-3">
-            <Button variant="default" onClick={handleDownload}>
+            <Button variant="default" onClick={handleSaveSite} disabled={isSaving}>
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {t('saveSite')}
+            </Button>
+            <Button variant="outline" onClick={handleDownload}>
               <Download className="h-4 w-4" />
               {t('downloadHtml')}
             </Button>
