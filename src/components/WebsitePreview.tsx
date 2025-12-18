@@ -129,7 +129,7 @@ export function WebsitePreview({ business }: WebsitePreviewProps) {
         business_data: JSON.parse(JSON.stringify(business)),
         status: 'published',
         public_url: `/site/${finalSlug}`,
-        custom_domain: `${finalSlug}.saroarabuilder.com`,
+        custom_domain: null,
         domain_verified: true,
         user_id: user.id,
       }]);
@@ -141,8 +141,8 @@ export function WebsitePreview({ business }: WebsitePreviewProps) {
     } else {
       toast.success(
         language === 'ar'
-          ? `تم الحفظ! رابط الموقع: ${finalSlug}.saroarabuilder.com`
-          : `Saved! Site URL: ${finalSlug}.saroarabuilder.com`
+          ? `تم الحفظ! رابط الموقع: ${window.location.origin}/site/${finalSlug}`
+          : `Saved! Site URL: ${window.location.origin}/site/${finalSlug}`
       );
     }
   };
