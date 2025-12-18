@@ -19,6 +19,8 @@ export type Database = {
           business_data: Json
           created_at: string | null
           custom_domain: string | null
+          domain_admin_notes: string | null
+          domain_approval_status: string | null
           domain_verified: boolean | null
           id: string
           place_id: string
@@ -33,6 +35,8 @@ export type Database = {
           business_data: Json
           created_at?: string | null
           custom_domain?: string | null
+          domain_admin_notes?: string | null
+          domain_approval_status?: string | null
           domain_verified?: boolean | null
           id?: string
           place_id: string
@@ -47,6 +51,8 @@ export type Database = {
           business_data?: Json
           created_at?: string | null
           custom_domain?: string | null
+          domain_admin_notes?: string | null
+          domain_approval_status?: string | null
           domain_verified?: boolean | null
           id?: string
           place_id?: string
@@ -111,6 +117,7 @@ export type Database = {
           business_data: Json | null
           created_at: string | null
           custom_domain: string | null
+          domain_approval_status: string | null
           domain_verified: boolean | null
           id: string | null
           place_id: string | null
@@ -124,6 +131,7 @@ export type Database = {
           business_data?: Json | null
           created_at?: string | null
           custom_domain?: string | null
+          domain_approval_status?: string | null
           domain_verified?: boolean | null
           id?: string | null
           place_id?: string | null
@@ -137,6 +145,7 @@ export type Database = {
           business_data?: Json | null
           created_at?: string | null
           custom_domain?: string | null
+          domain_approval_status?: string | null
           domain_verified?: boolean | null
           id?: string | null
           place_id?: string | null
