@@ -90,19 +90,19 @@ export function WebsitePreview({ business }: WebsitePreviewProps) {
       setIsSaving(false);
       toast.info(
         language === 'ar' 
-          ? `هذا البزنس موجود مسبقاً: ${existingSite.slug}.saroarabuilder.com`
-          : `This business already exists: ${existingSite.slug}.saroarabuilder.com`
+          ? `هذا البزنس موجود مسبقاً: /site/${existingSite.slug}`
+          : `This business already exists: /site/${existingSite.slug}`
       );
       return;
     }
     
-    // Generate clean slug from business name
+    // Generate clean slug from business name only
     const baseSlug = business.name
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/[^a-z0-9\u0600-\u06FF]+/g, '-')
       .replace(/^-|-$/g, '');
     
-    // Check for duplicate slugs and add number if needed
+    // Check for duplicate slugs and add number if needed (1, 2, 3...)
     const { data: existingSlugs } = await supabase
       .from('generated_sites')
       .select('slug')
@@ -112,7 +112,7 @@ export function WebsitePreview({ business }: WebsitePreviewProps) {
     if (existingSlugs && existingSlugs.length > 0) {
       const slugSet = new Set(existingSlugs.map(s => s.slug));
       if (slugSet.has(baseSlug)) {
-        let counter = 2;
+        let counter = 1;
         while (slugSet.has(`${baseSlug}-${counter}`)) {
           counter++;
         }
