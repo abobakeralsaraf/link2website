@@ -20,7 +20,7 @@ export default function PublicSite() {
       }
 
       const { data, error: fetchError } = await supabase
-        .from('generated_sites')
+        .from('public_sites')
         .select('business_data')
         .eq('slug', slug)
         .maybeSingle();
