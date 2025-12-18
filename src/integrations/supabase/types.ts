@@ -106,7 +106,48 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_sites: {
+        Row: {
+          business_data: Json | null
+          created_at: string | null
+          custom_domain: string | null
+          domain_verified: boolean | null
+          id: string | null
+          place_id: string | null
+          public_url: string | null
+          site_name: string | null
+          slug: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          business_data?: Json | null
+          created_at?: string | null
+          custom_domain?: string | null
+          domain_verified?: boolean | null
+          id?: string | null
+          place_id?: string | null
+          public_url?: string | null
+          site_name?: string | null
+          slug?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          business_data?: Json | null
+          created_at?: string | null
+          custom_domain?: string | null
+          domain_verified?: boolean | null
+          id?: string | null
+          place_id?: string | null
+          public_url?: string | null
+          site_name?: string | null
+          slug?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
