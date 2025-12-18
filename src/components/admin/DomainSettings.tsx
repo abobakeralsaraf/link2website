@@ -43,7 +43,7 @@ export function DomainSettings({
   const [isSaving, setIsSaving] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
 
-  const autoSubdomain = `${slug}.saroarabuilder.com`;
+  const primaryUrl = `${window.location.origin}/site/${slug}`;
 
   const handleCopy = async (text: string, id: string) => {
     await navigator.clipboard.writeText(text);
@@ -90,11 +90,11 @@ export function DomainSettings({
   const handleRemoveDomain = async () => {
     setIsSaving(true);
 
-    // Reset to auto subdomain
+    // Reset to primary URL (remove custom domain)
     const { error } = await supabase
       .from('generated_sites')
       .update({
-        custom_domain: autoSubdomain,
+        custom_domain: null,
         domain_verified: true,
         status: 'published',
       })
@@ -106,7 +106,7 @@ export function DomainSettings({
       toast.error(error.message);
     } else {
       setDomain('');
-      toast.success(language === 'ar' ? 'تم إعادة تعيين النطاق الفرعي' : 'Domain reset to subdomain');
+      toast.success(language === 'ar' ? 'تم إزالة النطاق المخصص' : 'Custom domain removed');
       onDomainUpdated();
     }
   };
@@ -129,27 +129,27 @@ export function DomainSettings({
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* Auto Subdomain Info */}
+          {/* Primary URL Info */}
           <Alert className="bg-primary/5 border-primary/20">
             <Sparkles className="h-4 w-4 text-primary" />
             <AlertTitle className="text-primary">
-              {language === 'ar' ? 'النطاق الفرعي التلقائي' : 'Automatic Subdomain'}
+              {language === 'ar' ? 'رابط الموقع الأساسي' : 'Primary Site URL'}
             </AlertTitle>
             <AlertDescription>
               <p className="mb-2">
                 {language === 'ar'
-                  ? 'موقعك متاح تلقائياً على الرابط التالي:'
-                  : 'Your site is automatically available at:'}
+                  ? 'موقعك متاح على الرابط التالي:'
+                  : 'Your site is available at:'}
               </p>
               <div className="flex items-center gap-2 bg-background rounded-lg p-2">
                 <span className="font-mono text-sm text-foreground flex-1">
-                  https://{autoSubdomain}
+                  {primaryUrl}
                 </span>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-6 w-6"
-                  onClick={() => handleCopy(`https://${autoSubdomain}`, 'auto')}
+                  onClick={() => handleCopy(primaryUrl, 'auto')}
                 >
                   {copied === 'auto' ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                 </Button>
@@ -284,7 +284,7 @@ export function DomainSettings({
               onClick={handleRemoveDomain}
               disabled={isSaving}
             >
-              {language === 'ar' ? 'إعادة تعيين للنطاق الفرعي' : 'Reset to Subdomain'}
+              {language === 'ar' ? 'إزالة النطاق المخصص' : 'Remove Custom Domain'}
             </Button>
           )}
           <Button variant="outline" onClick={() => onOpenChange(false)}>
