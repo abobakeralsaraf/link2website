@@ -72,6 +72,7 @@ export function DomainSettings({
       .update({
         custom_domain: domain.trim().toLowerCase(),
         domain_verified: false,
+        domain_approval_status: 'pending',
         status: 'ready_for_domain',
       })
       .eq('id', siteId);
@@ -81,7 +82,11 @@ export function DomainSettings({
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success(language === 'ar' ? 'تم حفظ النطاق' : 'Domain saved');
+      toast.success(
+        language === 'ar' 
+          ? 'تم إرسال طلب النطاق للمراجعة. سيتم إشعارك عند الموافقة.' 
+          : 'Domain request submitted for review. You will be notified when approved.'
+      );
       onDomainUpdated();
       onOpenChange(false);
     }

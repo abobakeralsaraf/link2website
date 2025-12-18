@@ -9,7 +9,7 @@ import { Link, useNavigate } from 'react-router-dom';
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -17,7 +17,10 @@ export function Header() {
     { to: '/dashboard', label: t('dashboard') },
     { to: '/', label: t('navGenerator') },
     { to: '/generated-sites', label: t('navGeneratedSites') },
-    ...(isAdmin ? [{ to: '/admin/users', label: t('manageUsers') }] : []),
+    ...(isAdmin ? [
+      { to: '/admin/users', label: t('manageUsers') },
+      { to: '/admin/domains', label: language === 'ar' ? 'إدارة النطاقات' : 'Domains' },
+    ] : []),
   ] : [
     { to: '/', label: t('navGenerator') },
   ];

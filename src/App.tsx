@@ -13,6 +13,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import GeneratedSites from "./pages/GeneratedSites";
 import AdminUsers from "./pages/AdminUsers";
+import AdminDomains from "./pages/AdminDomains";
 import PublicSite from "./pages/PublicSite";
 import NotFound from "./pages/NotFound";
 
@@ -51,6 +52,7 @@ function SubdomainRouter() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/generated-sites" element={<GeneratedSites />} />
         <Route path="/admin/users" element={<AdminUsers />} />
+        <Route path="/admin/domains" element={<AdminDomains />} />
         <Route path="/site/:slug" element={<PublicSite />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
