@@ -19,7 +19,7 @@ export function useSubdomain(): SubdomainSite {
     async function checkSubdomain() {
       const hostname = window.location.hostname;
       
-      // Check if it's a subdomain of saroarabuilder.com
+      // Check if it's a main domain (skip subdomain handling)
       const mainDomains = ['saroarabuilder.com', 'localhost', 'lovableproject.com'];
       const isMainDomain = mainDomains.some(domain => 
         hostname === domain || 
@@ -40,7 +40,7 @@ export function useSubdomain(): SubdomainSite {
 
         // Query by slug directly (subdomain = slug)
         const { data, error: fetchError } = await supabase
-          .from('generated_sites')
+          .from('public_sites')
           .select('business_data')
           .eq('slug', slug)
           .eq('status', 'published')
@@ -63,7 +63,33 @@ export function useSubdomain(): SubdomainSite {
         return;
       }
 
-      // Not a recognized subdomain
+      // Check if it's a custom domain (e.g., abobakeralsaraf.com)
+      // Query the database for a site with this custom_domain
+      const cleanHostname = hostname.replace(/^www\./, '').toLowerCase();
+      
+      const { data, error: fetchError } = await supabase
+        .from('public_sites')
+        .select('business_data')
+        .eq('custom_domain', cleanHostname)
+        .eq('status', 'published')
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error('Custom domain lookup error:', fetchError);
+        setIsSubdomain(false);
+        setLoading(false);
+        return;
+      }
+
+      if (data) {
+        // Found a site with this custom domain
+        setIsSubdomain(true);
+        setBusiness(data.business_data as unknown as BusinessData);
+        setLoading(false);
+        return;
+      }
+
+      // Not a recognized subdomain or custom domain
       setIsSubdomain(false);
       setLoading(false);
     }
