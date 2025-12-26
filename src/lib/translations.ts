@@ -182,6 +182,46 @@ export const translations = {
     siteUrl: 'Site URL:',
     activateSubdomain: 'Activate Subdomain',
     saveCustomDomain: 'Save Custom Domain',
+    
+    // Premium Site Navigation
+    home: 'Home',
+    gallery: 'Gallery',
+    contact: 'Contact',
+    contactUs: 'Contact Us',
+    
+    // Premium Hero
+    welcomeTo: 'Welcome to',
+    exploreMore: 'Explore More',
+    
+    // Premium Gallery
+    discoverOurSpace: 'Discover Our Space',
+    galleryDescription: 'Take a visual tour through our establishment',
+    
+    // Premium Reviews
+    whatOurClientsSay: 'What Our Clients Say',
+    reviewsDescription: 'Real experiences from our valued customers',
+    
+    // Premium Business Info
+    whenToVisit: 'When to Visit',
+    findUs: 'Find Us',
+    visitOurLocation: 'Visit Our Location',
+    address: 'Address',
+    phone: 'Phone',
+    website: 'Website',
+    
+    // Premium CTA
+    callUs: 'Call Us',
+    reachOut: 'Reach Out',
+    ctaDescription: 'We would love to hear from you. Get in touch with us today.',
+    
+    // Premium Map
+    ourLocation: 'Our Location',
+    findUsOnMap: 'Find Us on the Map',
+    
+    // Premium Footer
+    allRightsReserved: 'All rights reserved',
+    madeWith: 'Made with',
+    by: 'by',
   },
   ar: {
     // App
@@ -364,6 +404,46 @@ export const translations = {
     siteUrl: 'رابط الموقع:',
     activateSubdomain: 'تفعيل النطاق الفرعي',
     saveCustomDomain: 'حفظ النطاق المخصص',
+    
+    // Premium Site Navigation
+    home: 'الرئيسية',
+    gallery: 'المعرض',
+    contact: 'اتصل',
+    contactUs: 'تواصل معنا',
+    
+    // Premium Hero
+    welcomeTo: 'مرحباً بكم في',
+    exploreMore: 'استكشف المزيد',
+    
+    // Premium Gallery
+    discoverOurSpace: 'اكتشف مساحتنا',
+    galleryDescription: 'جولة بصرية في منشأتنا',
+    
+    // Premium Reviews
+    whatOurClientsSay: 'ماذا يقول عملاؤنا',
+    reviewsDescription: 'تجارب حقيقية من عملائنا الكرام',
+    
+    // Premium Business Info
+    whenToVisit: 'متى تزورنا',
+    findUs: 'اعثر علينا',
+    visitOurLocation: 'زيارة موقعنا',
+    address: 'العنوان',
+    phone: 'الهاتف',
+    website: 'الموقع الإلكتروني',
+    
+    // Premium CTA
+    callUs: 'اتصل بنا',
+    reachOut: 'تواصل معنا',
+    ctaDescription: 'نحب أن نسمع منك. تواصل معنا اليوم.',
+    
+    // Premium Map
+    ourLocation: 'موقعنا',
+    findUsOnMap: 'اعثر علينا على الخريطة',
+    
+    // Premium Footer
+    allRightsReserved: 'جميع الحقوق محفوظة',
+    madeWith: 'صنع بـ',
+    by: 'بواسطة',
   },
 } as const;
 
