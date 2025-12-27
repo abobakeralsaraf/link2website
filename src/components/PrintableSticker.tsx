@@ -268,7 +268,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
         <div
           ref={stickerRef}
           id="printable-sticker"
-          className="w-[400px] bg-white rounded-2xl shadow-2xl overflow-hidden"
+          className="w-[400px] bg-white rounded-2xl overflow-hidden"
           style={{ fontFamily: language === 'ar' ? 'Noto Sans Arabic, sans-serif' : 'Plus Jakarta Sans, sans-serif' }}
           dir={language === 'ar' ? 'rtl' : 'ltr'}
         >
@@ -280,7 +280,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
                 alt={name}
                 crossOrigin="anonymous"
                 referrerPolicy="no-referrer"
-                className="w-full h-full object-cover"
+                className="block w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 p-4 text-white text-center">
@@ -301,7 +301,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
           
           {/* Rating Section - Like Website */}
           {business.rating && (
-            <div className="bg-secondary p-4">
+            <div className="bg-white p-4">
               <div className="flex items-center justify-center gap-3">
                 <div className="flex items-center gap-1">
                   {renderStars(business.rating)}
@@ -322,7 +322,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
           
           {/* Photo Gallery Strip */}
           {displayPhotos.length > 0 && (
-            <div className="flex gap-1 p-2 bg-secondary">
+            <div className="flex gap-1 p-2 bg-white">
               {displayPhotos.map((photo, index) => (
                 <div key={index} className="flex-1 h-20 overflow-hidden">
                   <img 
@@ -330,7 +330,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
                     alt={`${name} ${index + 1}`}
                     crossOrigin="anonymous"
                     referrerPolicy="no-referrer"
-                    className="w-full h-full object-cover"
+                    className="block w-full h-full object-cover"
                   />
                 </div>
               ))}
@@ -341,7 +341,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
           {topReviews.length > 0 && (
             <div className="p-3 space-y-2">
               {topReviews.map((review, index) => (
-                <div key={index} className="bg-secondary p-3 relative">
+                <div key={index} className="bg-white p-3 relative">
                   <Quote className="absolute top-2 right-2 w-4 h-4 text-primary/20" />
                   <div className="flex items-center gap-2 mb-1">
                     {review.authorPhoto ? (
@@ -350,7 +350,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
                         alt={review.authorName}
                         crossOrigin="anonymous"
                         referrerPolicy="no-referrer"
-                        className="w-6 h-6 rounded-full object-cover"
+                        className="block w-6 h-6 rounded-full object-cover"
                       />
                     ) : (
                       <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
@@ -393,7 +393,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
             
             {/* Smaller QR Code for Google Reviews */}
             <div className="py-2">
-              <div className="inline-block p-2 bg-secondary">
+              <div className="inline-block p-2 bg-white">
                 <QRCodeSVG
                   value={reviewUrl}
                   size={100}
@@ -432,7 +432,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
           </div>
           
           {/* Footer */}
-          <div className="bg-secondary p-3">
+          <div className="bg-white p-3">
             <div className="flex items-center justify-between gap-3">
               <div className="flex-1 text-xs text-muted-foreground">
                 <p className="font-medium mb-0.5">
