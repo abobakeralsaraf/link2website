@@ -14,7 +14,8 @@ interface PrintableStickerProps {
 export function PrintableSticker({ business }: PrintableStickerProps) {
   const { language } = useLanguage();
   const stickerRef = useRef<HTMLDivElement>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
 
   const name = language === 'ar' && business.nameAr ? business.nameAr : business.name;
 
@@ -45,14 +46,18 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
     if (!stickerRef.current) return null;
 
     // Temporarily disable Google Fonts stylesheet links to avoid cssRules SecurityError
-    const fontLinks = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'))
-      .filter((l) => l.href?.includes('fonts.googleapis.com'));
+    const fontLinks = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')).filter((l) =>
+      l.href?.includes('fonts.googleapis.com'),
+    );
     const prevDisabled = fontLinks.map((l) => l.disabled);
     fontLinks.forEach((l) => (l.disabled = true));
 
-    // Clone sticker and proxy external images (Google photos/avatars) so canvas export works
+    // Clone sticker and proxy external images (Google photos/avatars) so export works
     const clone = stickerRef.current.cloneNode(true) as HTMLElement;
     clone.removeAttribute('id');
+
+    // Remove runtime <style> blocks (our print CSS) from the clone to avoid side-effects during capture
+    Array.from(clone.querySelectorAll('style')).forEach((s) => s.remove());
 
     const imgs = Array.from(clone.querySelectorAll<HTMLImageElement>('img'));
     imgs.forEach((img) => {
@@ -67,14 +72,26 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
     stage.style.position = 'fixed';
     stage.style.left = '-10000px';
     stage.style.top = '0';
-    stage.style.width = `${stickerRef.current.getBoundingClientRect().width}px`;
     stage.style.zIndex = '-1';
+    stage.style.background = '#ffffff';
     stage.appendChild(clone);
     document.body.appendChild(stage);
 
     try {
-      // Allow images to load through proxy
-      await new Promise<void>((resolve) => setTimeout(() => resolve(), 350));
+      // Wait for images in the clone to finish loading (or timeout)
+      await Promise.race([
+        Promise.all(
+          imgs.map(
+            (img) =>
+              new Promise<void>((resolve) => {
+                if (img.complete) return resolve();
+                img.onload = () => resolve();
+                img.onerror = () => resolve();
+              }),
+          ),
+        ).then(() => undefined),
+        new Promise<void>((resolve) => setTimeout(resolve, 1500)),
+      ]);
 
       const rect = clone.getBoundingClientRect();
       const scale = 3;
@@ -82,12 +99,12 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
       const dataUrl = await domtoimage.toPng(clone, {
         cacheBust: true,
         bgcolor: '#ffffff',
-        width: Math.round(rect.width * scale),
-        height: Math.round(rect.height * scale),
+        // NOTE: We upscale by using width/height * scale (no CSS transform) to avoid blank/cropped exports.
+        width: Math.max(1, Math.round(rect.width * scale)),
+        height: Math.max(1, Math.round(rect.height * scale)),
         style: {
-          transform: `scale(${scale})`,
+          transform: 'scale(1)',
           transformOrigin: 'top left',
-          // Avoid depending on external fonts for export
           fontFamily: language === 'ar' ? 'Tajawal, Arial, sans-serif' : 'Inter, Arial, sans-serif',
         },
       } as any);
@@ -102,7 +119,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
   const handleDownloadPNG = useCallback(async () => {
     if (!stickerRef.current) return;
 
-    setIsLoading(true);
+    setIsDownloading(true);
     try {
       const dataUrl = await renderStickerPng();
       if (!dataUrl) return;
@@ -117,12 +134,12 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
       console.error('Download error:', error);
       toast.error(language === 'ar' ? 'حدث خطأ أثناء التحميل' : 'Download failed');
     } finally {
-      setIsLoading(false);
+      setIsDownloading(false);
     }
   }, [name, language, renderStickerPng]);
 
   const handlePrint = useCallback(async () => {
-    setIsLoading(true);
+    setIsPrinting(true);
     try {
       const dataUrl = await renderStickerPng();
       if (!dataUrl) return;
@@ -158,7 +175,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
       console.error('Print error:', error);
       toast.error(language === 'ar' ? 'حدث خطأ أثناء الطباعة' : 'Print failed');
     } finally {
-      setIsLoading(false);
+      setIsPrinting(false);
     }
   }, [language, name, renderStickerPng]);
 
@@ -190,12 +207,31 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
     <div className="space-y-6">
       {/* Control Buttons */}
       <div className="flex flex-wrap gap-3 justify-center print:hidden">
-        <Button onClick={handleDownloadPNG} disabled={isLoading} className="gap-2">
-          {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+        <Button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            void handleDownloadPNG();
+          }}
+          disabled={isDownloading || isPrinting}
+          className="gap-2"
+        >
+          {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
           {language === 'ar' ? 'تحميل كصورة' : 'Download as Image'}
         </Button>
-        <Button onClick={handlePrint} disabled={isLoading} variant="outline" className="gap-2">
-          {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
+        <Button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            void handlePrint();
+          }}
+          disabled={isDownloading || isPrinting}
+          variant="outline"
+          className="gap-2"
+        >
+          {isPrinting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
           {language === 'ar' ? 'طباعة' : 'Print'}
         </Button>
       </div>
