@@ -11,7 +11,7 @@ interface PrintableStickerProps {
   business: BusinessData;
 }
 
-type RasterFormat = 'png' | 'webp';
+
 
 function dataUrlToBlob(dataUrl: string): Promise<Blob> {
   return fetch(dataUrl).then((r) => r.blob());
@@ -43,9 +43,8 @@ async function convertDataUrlToWebp(dataUrl: string, quality = 0.92): Promise<st
 export function PrintableSticker({ business }: PrintableStickerProps) {
   const { language } = useLanguage();
   const stickerRef = useRef<HTMLDivElement>(null);
-  const actionLockRef = useRef<null | 'download' | 'download-webp' | 'print'>(null);
+  const actionLockRef = useRef<null | 'download' | 'print'>(null);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [isDownloadingWebp, setIsDownloadingWebp] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
 
   const name = language === 'ar' && business.nameAr ? business.nameAr : business.name;
@@ -168,49 +167,20 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
     }
   }, [getProxyUrl, language]);
 
-  const renderStickerRaster = useCallback(
-    async (format: RasterFormat) => {
-      const png = await renderStickerPng();
-      if (!png) return null;
-      if (format === 'png') return png;
-      return convertDataUrlToWebp(png, 0.92);
-    },
-    [renderStickerPng],
-  );
+  const renderStickerWebp = useCallback(async () => {
+    const png = await renderStickerPng();
+    if (!png) return null;
+    return convertDataUrlToWebp(png, 0.92);
+  }, [renderStickerPng]);
 
-  const handleDownloadPNG = useCallback(async () => {
+  const handleDownload = useCallback(async () => {
     if (!stickerRef.current) return;
     if (actionLockRef.current) return;
 
     actionLockRef.current = 'download';
     setIsDownloading(true);
     try {
-      const dataUrl = await renderStickerRaster('png');
-      if (!dataUrl) return;
-
-      const link = document.createElement('a');
-      link.download = `${name.replace(/\s+/g, '-').toLowerCase()}-sticker.png`;
-      link.href = dataUrl;
-      link.click();
-
-      toast.success(language === 'ar' ? 'تم تحميل الاستيكر كصورة PNG' : 'Sticker downloaded as PNG');
-    } catch (error) {
-      console.error('Download error:', error);
-      toast.error(language === 'ar' ? 'حدث خطأ أثناء التحميل' : 'Download failed');
-    } finally {
-      setIsDownloading(false);
-      actionLockRef.current = null;
-    }
-  }, [name, language, renderStickerRaster]);
-
-  const handleDownloadWebp = useCallback(async () => {
-    if (!stickerRef.current) return;
-    if (actionLockRef.current) return;
-
-    actionLockRef.current = 'download-webp';
-    setIsDownloadingWebp(true);
-    try {
-      const dataUrl = await renderStickerRaster('webp');
+      const dataUrl = await renderStickerWebp();
       if (!dataUrl) return;
 
       const link = document.createElement('a');
@@ -220,13 +190,13 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
 
       toast.success(language === 'ar' ? 'تم تحميل الاستيكر بصيغة WebP' : 'Sticker downloaded as WebP');
     } catch (error) {
-      console.error('WebP download error:', error);
+      console.error('Download error:', error);
       toast.error(language === 'ar' ? 'حدث خطأ أثناء التحميل' : 'Download failed');
     } finally {
-      setIsDownloadingWebp(false);
+      setIsDownloading(false);
       actionLockRef.current = null;
     }
-  }, [name, language, renderStickerRaster]);
+  }, [name, language, renderStickerWebp]);
 
   const handlePrint = useCallback(async () => {
     if (actionLockRef.current) return;
@@ -234,8 +204,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
     actionLockRef.current = 'print';
     setIsPrinting(true);
     try {
-      // Prefer WebP for printing (often smoother, fewer seam artifacts). Fallback is automatic.
-      const dataUrl = await renderStickerRaster('webp');
+      const dataUrl = await renderStickerWebp();
       if (!dataUrl) return;
 
       const printWindow = window.open('', '_blank');
@@ -281,7 +250,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
       setIsPrinting(false);
       actionLockRef.current = null;
     }
-  }, [language, name, renderStickerRaster]);
+  }, [language, name, renderStickerWebp]);
 
   // Render stars based on rating
   const renderStars = (rating: number) => {
@@ -319,31 +288,13 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            void handleDownloadPNG();
+            void handleDownload();
           }}
-          disabled={isDownloading || isDownloadingWebp || isPrinting}
+          disabled={isDownloading || isPrinting}
           className="gap-2"
         >
           {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-          {language === 'ar' ? 'تحميل PNG' : 'Download PNG'}
-        </Button>
-
-        <Button
-          type="button"
-          onPointerDown={(e) => {
-            e.stopPropagation();
-          }}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            void handleDownloadWebp();
-          }}
-          disabled={isDownloading || isDownloadingWebp || isPrinting}
-          variant="outline"
-          className="gap-2"
-        >
-          {isDownloadingWebp ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-          {language === 'ar' ? 'تحميل WebP' : 'Download WebP'}
+          {language === 'ar' ? 'تحميل' : 'Download'}
         </Button>
 
         <Button
@@ -356,7 +307,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
             e.stopPropagation();
             void handlePrint();
           }}
-          disabled={isDownloading || isDownloadingWebp || isPrinting}
+          disabled={isDownloading || isPrinting}
           variant="outline"
           className="gap-2"
         >
