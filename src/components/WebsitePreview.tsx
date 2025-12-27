@@ -3,10 +3,12 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { useAuth } from '@/hooks/useAuth';
 import { BusinessData } from '@/lib/types';
 import { GeneratedWebsite } from './generated/GeneratedWebsite';
+import { PrintableSticker } from './PrintableSticker';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Download, Share2, ExternalLink, Monitor, Smartphone, Tablet, Check, Save, Loader2, LogIn, Info } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Download, Share2, ExternalLink, Monitor, Smartphone, Tablet, Check, Save, Loader2, LogIn, Info, Globe, Sticker } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
@@ -23,6 +25,7 @@ export function WebsitePreview({ business }: WebsitePreviewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('desktop');
   const [copied, setCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState<'website' | 'sticker'>('website');
 
   const getViewModeStyles = () => {
     switch (viewMode) {
@@ -161,87 +164,123 @@ export function WebsitePreview({ business }: WebsitePreviewProps) {
         </Alert>
       )}
 
-      {/* Controls */}
-      <Card className="shadow-card border-border/50">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center justify-between flex-wrap gap-4">
-            <span className="text-foreground">{t('previewTitle')}</span>
-            
-            {/* View Mode Toggle */}
-            <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
-              <Button
-                variant={viewMode === 'desktop' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('desktop')}
-              >
-                <Monitor className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === 'tablet' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('tablet')}
-              >
-                <Tablet className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === 'mobile' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('mobile')}
-              >
-                <Smartphone className="h-4 w-4" />
-              </Button>
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="flex flex-wrap gap-3">
-            {user ? (
-              <Button variant="default" onClick={handleSaveSite} disabled={isSaving}>
-                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                {t('saveSite')}
-              </Button>
-            ) : (
-              <Link to="/auth">
-                <Button variant="default" className="gap-2">
-                  <LogIn className="h-4 w-4" />
-                  {language === 'ar' ? 'سجّل الدخول لحفظ الموقع' : 'Sign In to Save Site'}
-                </Button>
-              </Link>
-            )}
-            <Button variant="outline" onClick={handleDownload}>
-              <Download className="h-4 w-4" />
-              {t('downloadHtml')}
-            </Button>
-            <Button variant="outline" onClick={handleShare}>
-              {copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
-              {t('shareWebsite')}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Tabs for Website and Sticker */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'website' | 'sticker')} className="w-full">
+        <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
+          <TabsTrigger value="website" className="gap-2">
+            <Globe className="h-4 w-4" />
+            {language === 'ar' ? 'الموقع الإلكتروني' : 'Website'}
+          </TabsTrigger>
+          <TabsTrigger value="sticker" className="gap-2">
+            <Sticker className="h-4 w-4" />
+            {language === 'ar' ? 'استيكر التقييم' : 'Review Sticker'}
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Preview Frame */}
-      <div className={`transition-all duration-300 ${getViewModeStyles()}`}>
-        <div className="bg-card rounded-2xl shadow-card-lg border border-border/50 overflow-hidden">
-          {/* Browser Chrome */}
-          <div className="bg-secondary/50 border-b border-border/50 px-4 py-3 flex items-center gap-3">
-            <div className="flex gap-2">
-              <div className="w-3 h-3 rounded-full bg-red-400" />
-              <div className="w-3 h-3 rounded-full bg-yellow-400" />
-              <div className="w-3 h-3 rounded-full bg-green-400" />
+        {/* Website Tab */}
+        <TabsContent value="website" className="space-y-6 mt-6">
+          {/* Controls */}
+          <Card className="shadow-card border-border/50">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center justify-between flex-wrap gap-4">
+                <span className="text-foreground">{t('previewTitle')}</span>
+                
+                {/* View Mode Toggle */}
+                <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
+                  <Button
+                    variant={viewMode === 'desktop' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('desktop')}
+                  >
+                    <Monitor className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === 'tablet' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('tablet')}
+                  >
+                    <Tablet className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === 'mobile' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('mobile')}
+                  >
+                    <Smartphone className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="flex flex-wrap gap-3">
+                {user ? (
+                  <Button variant="default" onClick={handleSaveSite} disabled={isSaving}>
+                    {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    {t('saveSite')}
+                  </Button>
+                ) : (
+                  <Link to="/auth">
+                    <Button variant="default" className="gap-2">
+                      <LogIn className="h-4 w-4" />
+                      {language === 'ar' ? 'سجّل الدخول لحفظ الموقع' : 'Sign In to Save Site'}
+                    </Button>
+                  </Link>
+                )}
+                <Button variant="outline" onClick={handleDownload}>
+                  <Download className="h-4 w-4" />
+                  {t('downloadHtml')}
+                </Button>
+                <Button variant="outline" onClick={handleShare}>
+                  {copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
+                  {t('shareWebsite')}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Preview Frame */}
+          <div className={`transition-all duration-300 ${getViewModeStyles()}`}>
+            <div className="bg-card rounded-2xl shadow-card-lg border border-border/50 overflow-hidden">
+              {/* Browser Chrome */}
+              <div className="bg-secondary/50 border-b border-border/50 px-4 py-3 flex items-center gap-3">
+                <div className="flex gap-2">
+                  <div className="w-3 h-3 rounded-full bg-red-400" />
+                  <div className="w-3 h-3 rounded-full bg-yellow-400" />
+                  <div className="w-3 h-3 rounded-full bg-green-400" />
+                </div>
+                <div className="flex-1 bg-background rounded-lg px-4 py-1.5 text-sm text-muted-foreground truncate">
+                  {business.website || `https://${business.name.toLowerCase().replace(/\s+/g, '-')}.com`}
+                </div>
+                <ExternalLink className="h-4 w-4 text-muted-foreground" />
+              </div>
+              
+              {/* Website Content */}
+              <div className="max-h-[70vh] overflow-y-auto">
+                <GeneratedWebsite business={business} />
+              </div>
             </div>
-            <div className="flex-1 bg-background rounded-lg px-4 py-1.5 text-sm text-muted-foreground truncate">
-              {business.website || `https://${business.name.toLowerCase().replace(/\s+/g, '-')}.com`}
-            </div>
-            <ExternalLink className="h-4 w-4 text-muted-foreground" />
           </div>
-          
-          {/* Website Content */}
-          <div className="max-h-[70vh] overflow-y-auto">
-            <GeneratedWebsite business={business} />
-          </div>
-        </div>
-      </div>
+        </TabsContent>
+
+        {/* Sticker Tab */}
+        <TabsContent value="sticker" className="mt-6">
+          <Card className="shadow-card border-border/50">
+            <CardHeader>
+              <CardTitle className="text-center">
+                {language === 'ar' ? 'استيكر التقييم القابل للطباعة' : 'Printable Review Sticker'}
+              </CardTitle>
+              <p className="text-center text-muted-foreground text-sm">
+                {language === 'ar' 
+                  ? 'اطبع هذا الاستيكر والصقه على واجهة محلك لدعوة العملاء للتقييم'
+                  : 'Print this sticker and place it on your storefront to invite customers to leave reviews'}
+              </p>
+            </CardHeader>
+            <CardContent>
+              <PrintableSticker business={business} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
