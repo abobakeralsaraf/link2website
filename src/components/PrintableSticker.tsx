@@ -14,6 +14,7 @@ interface PrintableStickerProps {
 export function PrintableSticker({ business }: PrintableStickerProps) {
   const { language } = useLanguage();
   const stickerRef = useRef<HTMLDivElement>(null);
+  const actionLockRef = useRef<null | 'download' | 'print'>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
 
@@ -45,6 +46,10 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
   const renderStickerPng = useCallback(async () => {
     if (!stickerRef.current) return null;
 
+    // Use the *real* node size (not the clone) to avoid rare cases where the clone
+    // measures huge and produces a mostly blank image.
+    const srcRect = stickerRef.current.getBoundingClientRect();
+
     // Temporarily disable Google Fonts stylesheet links to avoid cssRules SecurityError
     const fontLinks = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')).filter((l) =>
       l.href?.includes('fonts.googleapis.com'),
@@ -55,6 +60,10 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
     // Clone sticker and proxy external images (Google photos/avatars) so export works
     const clone = stickerRef.current.cloneNode(true) as HTMLElement;
     clone.removeAttribute('id');
+
+    // Lock base size for consistent rendering
+    clone.style.width = `${Math.max(1, Math.round(srcRect.width))}px`;
+    clone.style.height = `${Math.max(1, Math.round(srcRect.height))}px`;
 
     // Remove runtime <style> blocks (our print CSS) from the clone to avoid side-effects during capture
     Array.from(clone.querySelectorAll('style')).forEach((s) => s.remove());
@@ -74,6 +83,9 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
     stage.style.top = '0';
     stage.style.zIndex = '-1';
     stage.style.background = '#ffffff';
+    stage.style.display = 'inline-block';
+    stage.style.width = `${Math.max(1, Math.round(srcRect.width))}px`;
+    stage.style.height = `${Math.max(1, Math.round(srcRect.height))}px`;
     stage.appendChild(clone);
     document.body.appendChild(stage);
 
@@ -90,21 +102,23 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
               }),
           ),
         ).then(() => undefined),
-        new Promise<void>((resolve) => setTimeout(resolve, 1500)),
+        new Promise<void>((resolve) => setTimeout(resolve, 2000)),
       ]);
 
-      const rect = clone.getBoundingClientRect();
       const scale = 3;
+      const baseW = Math.max(1, Math.round(srcRect.width));
+      const baseH = Math.max(1, Math.round(srcRect.height));
 
       const dataUrl = await domtoimage.toPng(clone, {
         cacheBust: true,
         bgcolor: '#ffffff',
-        // NOTE: We upscale by using width/height * scale (no CSS transform) to avoid blank/cropped exports.
-        width: Math.max(1, Math.round(rect.width * scale)),
-        height: Math.max(1, Math.round(rect.height * scale)),
+        width: Math.max(1, Math.round(baseW * scale)),
+        height: Math.max(1, Math.round(baseH * scale)),
         style: {
-          transform: 'scale(1)',
+          transform: `scale(${scale})`,
           transformOrigin: 'top left',
+          width: `${baseW}px`,
+          height: `${baseH}px`,
           fontFamily: language === 'ar' ? 'Tajawal, Arial, sans-serif' : 'Inter, Arial, sans-serif',
         },
       } as any);
@@ -118,7 +132,9 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
 
   const handleDownloadPNG = useCallback(async () => {
     if (!stickerRef.current) return;
+    if (actionLockRef.current) return;
 
+    actionLockRef.current = 'download';
     setIsDownloading(true);
     try {
       const dataUrl = await renderStickerPng();
@@ -135,10 +151,14 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
       toast.error(language === 'ar' ? 'حدث خطأ أثناء التحميل' : 'Download failed');
     } finally {
       setIsDownloading(false);
+      actionLockRef.current = null;
     }
   }, [name, language, renderStickerPng]);
 
   const handlePrint = useCallback(async () => {
+    if (actionLockRef.current) return;
+
+    actionLockRef.current = 'print';
     setIsPrinting(true);
     try {
       const dataUrl = await renderStickerPng();
@@ -176,6 +196,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
       toast.error(language === 'ar' ? 'حدث خطأ أثناء الطباعة' : 'Print failed');
     } finally {
       setIsPrinting(false);
+      actionLockRef.current = null;
     }
   }, [language, name, renderStickerPng]);
 
@@ -209,6 +230,9 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
       <div className="flex flex-wrap gap-3 justify-center print:hidden">
         <Button
           type="button"
+          onPointerDown={(e) => {
+            e.stopPropagation();
+          }}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -222,6 +246,9 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
         </Button>
         <Button
           type="button"
+          onPointerDown={(e) => {
+            e.stopPropagation();
+          }}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
