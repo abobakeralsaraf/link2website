@@ -36,49 +36,96 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
   // Get top reviews (up to 2)
   const topReviews = business.reviews?.slice(0, 2) || [];
 
+  const getProxyUrl = useCallback((src: string) => {
+    const base = import.meta.env.VITE_SUPABASE_URL;
+    return `${base}/functions/v1/image-proxy?url=${encodeURIComponent(src)}`;
+  }, []);
+
+  const renderStickerPng = useCallback(async () => {
+    if (!stickerRef.current) return null;
+
+    // Temporarily disable Google Fonts stylesheet links to avoid cssRules SecurityError
+    const fontLinks = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'))
+      .filter((l) => l.href?.includes('fonts.googleapis.com'));
+    const prevDisabled = fontLinks.map((l) => l.disabled);
+    fontLinks.forEach((l) => (l.disabled = true));
+
+    // Clone sticker and proxy external images (Google photos/avatars) so canvas export works
+    const clone = stickerRef.current.cloneNode(true) as HTMLElement;
+    clone.removeAttribute('id');
+
+    const imgs = Array.from(clone.querySelectorAll<HTMLImageElement>('img'));
+    imgs.forEach((img) => {
+      const src = img.getAttribute('src') || '';
+      if (/^https?:\/\//.test(src) && !src.startsWith(window.location.origin)) {
+        img.setAttribute('src', getProxyUrl(src));
+      }
+    });
+
+    // Put clone offscreen so it can be measured/rendered
+    const stage = document.createElement('div');
+    stage.style.position = 'fixed';
+    stage.style.left = '-10000px';
+    stage.style.top = '0';
+    stage.style.width = `${stickerRef.current.getBoundingClientRect().width}px`;
+    stage.style.zIndex = '-1';
+    stage.appendChild(clone);
+    document.body.appendChild(stage);
+
+    try {
+      // Allow images to load through proxy
+      await new Promise<void>((resolve) => setTimeout(() => resolve(), 350));
+
+      const rect = clone.getBoundingClientRect();
+      const scale = 3;
+
+      const dataUrl = await domtoimage.toPng(clone, {
+        cacheBust: true,
+        bgcolor: '#ffffff',
+        width: Math.round(rect.width * scale),
+        height: Math.round(rect.height * scale),
+        style: {
+          transform: `scale(${scale})`,
+          transformOrigin: 'top left',
+          // Avoid depending on external fonts for export
+          fontFamily: language === 'ar' ? 'Tajawal, Arial, sans-serif' : 'Inter, Arial, sans-serif',
+        },
+      } as any);
+
+      return dataUrl;
+    } finally {
+      document.body.removeChild(stage);
+      fontLinks.forEach((l, i) => (l.disabled = prevDisabled[i]));
+    }
+  }, [getProxyUrl, language]);
+
   const handleDownloadPNG = useCallback(async () => {
     if (!stickerRef.current) return;
-    
+
     setIsLoading(true);
     try {
-      const dataUrl = await domtoimage.toPng(stickerRef.current, {
-        quality: 1,
-        width: 1200,
-        height: stickerRef.current.scrollHeight * 3,
-        style: {
-          transform: 'scale(3)',
-          transformOrigin: 'top left',
-        },
-      });
+      const dataUrl = await renderStickerPng();
+      if (!dataUrl) return;
 
       const link = document.createElement('a');
       link.download = `${name.replace(/\s+/g, '-').toLowerCase()}-sticker.png`;
       link.href = dataUrl;
       link.click();
 
-      toast.success(language === 'ar' ? 'تم تحميل الاستيكر بنجاح' : 'Sticker downloaded successfully');
+      toast.success(language === 'ar' ? 'تم تحميل الاستيكر كصورة PNG' : 'Sticker downloaded as PNG');
     } catch (error) {
       console.error('Download error:', error);
       toast.error(language === 'ar' ? 'حدث خطأ أثناء التحميل' : 'Download failed');
     } finally {
       setIsLoading(false);
     }
-  }, [name, language]);
+  }, [name, language, renderStickerPng]);
 
   const handlePrint = useCallback(async () => {
-    if (!stickerRef.current) return;
-
     setIsLoading(true);
     try {
-      const dataUrl = await domtoimage.toPng(stickerRef.current, {
-        quality: 1,
-        width: 1200,
-        height: stickerRef.current.scrollHeight * 3,
-        style: {
-          transform: 'scale(3)',
-          transformOrigin: 'top left',
-        },
-      });
+      const dataUrl = await renderStickerPng();
+      if (!dataUrl) return;
 
       const printWindow = window.open('', '_blank');
       if (!printWindow) {
@@ -88,18 +135,21 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
 
       printWindow.document.write(`
         <!DOCTYPE html>
-        <html>
+        <html lang="${language === 'ar' ? 'ar' : 'en'}">
         <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
           <title>${name} - Sticker</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { display: flex; justify-content: center; align-items: center; min-height: 100vh; background: white; }
-            img { max-width: 100%; max-height: 100vh; object-fit: contain; }
-            @media print { @page { margin: 0; } body { margin: 0; } }
+            body { display: grid; place-items: center; min-height: 100vh; background: #fff; }
+            img { width: 100%; max-width: 420px; height: auto; }
+            @media print { @page { margin: 0; } }
           </style>
         </head>
         <body>
-          <img src="${dataUrl}" alt="Sticker" onload="window.print(); window.close();" />
+          <img src="${dataUrl}" alt="${name} sticker" onload="window.print();" />
+          <script>window.onafterprint = () => window.close();</script>
         </body>
         </html>
       `);
@@ -110,7 +160,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [name, language]);
+  }, [language, name, renderStickerPng]);
 
   // Render stars based on rating
   const renderStars = (rating: number) => {
