@@ -1,9 +1,10 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import domtoimage from 'dom-to-image-more';
 import { BusinessData } from '@/lib/types';
 import { useLanguage } from '@/hooks/useLanguage';
 import { Button } from '@/components/ui/button';
-import { Download, Printer, Star, MapPin, Clock, Quote, User } from 'lucide-react';
+import { Download, Printer, Star, MapPin, Clock, Quote, User, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface PrintableStickerProps {
@@ -13,6 +14,7 @@ interface PrintableStickerProps {
 export function PrintableSticker({ business }: PrintableStickerProps) {
   const { language } = useLanguage();
   const stickerRef = useRef<HTMLDivElement>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const name = language === 'ar' && business.nameAr ? business.nameAr : business.name;
 
@@ -34,43 +36,80 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
   // Get top reviews (up to 2)
   const topReviews = business.reviews?.slice(0, 2) || [];
 
-  const handlePrint = useCallback(() => {
-    window.print();
-  }, []);
+  const handleDownloadPNG = useCallback(async () => {
+    if (!stickerRef.current) return;
+    
+    setIsLoading(true);
+    try {
+      const dataUrl = await domtoimage.toPng(stickerRef.current, {
+        quality: 1,
+        width: 1200,
+        height: stickerRef.current.scrollHeight * 3,
+        style: {
+          transform: 'scale(3)',
+          transformOrigin: 'top left',
+        },
+      });
 
-  const handleDownloadSVG = useCallback(() => {
+      const link = document.createElement('a');
+      link.download = `${name.replace(/\s+/g, '-').toLowerCase()}-sticker.png`;
+      link.href = dataUrl;
+      link.click();
+
+      toast.success(language === 'ar' ? 'تم تحميل الاستيكر بنجاح' : 'Sticker downloaded successfully');
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error(language === 'ar' ? 'حدث خطأ أثناء التحميل' : 'Download failed');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [name, language]);
+
+  const handlePrint = useCallback(async () => {
     if (!stickerRef.current) return;
 
-    // Clone the sticker element
-    const clone = stickerRef.current.cloneNode(true) as HTMLElement;
+    setIsLoading(true);
+    try {
+      const dataUrl = await domtoimage.toPng(stickerRef.current, {
+        quality: 1,
+        width: 1200,
+        height: stickerRef.current.scrollHeight * 3,
+        style: {
+          transform: 'scale(3)',
+          transformOrigin: 'top left',
+        },
+      });
 
-    // Create SVG wrapper
-    const svgNS = 'http://www.w3.org/2000/svg';
-    const svg = document.createElementNS(svgNS, 'svg');
-    svg.setAttribute('xmlns', svgNS);
-    svg.setAttribute('width', '400');
-    svg.setAttribute('height', '700');
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        toast.error(language === 'ar' ? 'تعذر فتح نافذة الطباعة' : 'Could not open print window');
+        return;
+      }
 
-    // Create foreignObject to embed HTML
-    const foreignObject = document.createElementNS(svgNS, 'foreignObject');
-    foreignObject.setAttribute('width', '100%');
-    foreignObject.setAttribute('height', '100%');
-    foreignObject.appendChild(clone);
-    svg.appendChild(foreignObject);
-
-    // Serialize and download
-    const serializer = new XMLSerializer();
-    const svgString = serializer.serializeToString(svg);
-    const blob = new Blob([svgString], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement('a');
-    link.download = `${name.replace(/\s+/g, '-').toLowerCase()}-sticker.svg`;
-    link.href = url;
-    link.click();
-    URL.revokeObjectURL(url);
-
-    toast.success(language === 'ar' ? 'تم تحميل الاستيكر بنجاح' : 'Sticker downloaded successfully');
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>${name} - Sticker</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { display: flex; justify-content: center; align-items: center; min-height: 100vh; background: white; }
+            img { max-width: 100%; max-height: 100vh; object-fit: contain; }
+            @media print { @page { margin: 0; } body { margin: 0; } }
+          </style>
+        </head>
+        <body>
+          <img src="${dataUrl}" alt="Sticker" onload="window.print(); window.close();" />
+        </body>
+        </html>
+      `);
+      printWindow.document.close();
+    } catch (error) {
+      console.error('Print error:', error);
+      toast.error(language === 'ar' ? 'حدث خطأ أثناء الطباعة' : 'Print failed');
+    } finally {
+      setIsLoading(false);
+    }
   }, [name, language]);
 
   // Render stars based on rating
@@ -101,12 +140,12 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
     <div className="space-y-6">
       {/* Control Buttons */}
       <div className="flex flex-wrap gap-3 justify-center print:hidden">
-        <Button onClick={handleDownloadSVG} className="gap-2">
-          <Download className="w-4 h-4" />
+        <Button onClick={handleDownloadPNG} disabled={isLoading} className="gap-2">
+          {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
           {language === 'ar' ? 'تحميل كصورة' : 'Download as Image'}
         </Button>
-        <Button onClick={handlePrint} variant="outline" className="gap-2">
-          <Printer className="w-4 h-4" />
+        <Button onClick={handlePrint} disabled={isLoading} variant="outline" className="gap-2">
+          {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
           {language === 'ar' ? 'طباعة' : 'Print'}
         </Button>
       </div>
