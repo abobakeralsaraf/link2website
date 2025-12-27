@@ -3,7 +3,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { BusinessData } from '@/lib/types';
 import { useLanguage } from '@/hooks/useLanguage';
 import { Button } from '@/components/ui/button';
-import { Download, Printer, Star } from 'lucide-react';
+import { Download, Printer, Star, MapPin, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface PrintableStickerProps {
@@ -24,6 +24,12 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
   // WhatsApp link for ordering stickers
   const whatsappNumber = '201514167733';
   const whatsappUrl = `https://wa.me/${whatsappNumber}`;
+
+  // Get hero image (first photo)
+  const heroImage = business.photos?.[0];
+  
+  // Get display photos (up to 3 small ones)
+  const displayPhotos = business.photos?.slice(1, 4) || [];
   
   const handlePrint = useCallback(() => {
     window.print();
@@ -40,7 +46,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
     const svg = document.createElementNS(svgNS, 'svg');
     svg.setAttribute('xmlns', svgNS);
     svg.setAttribute('width', '400');
-    svg.setAttribute('height', '600');
+    svg.setAttribute('height', '700');
     
     // Create foreignObject to embed HTML
     const foreignObject = document.createElementNS(svgNS, 'foreignObject');
@@ -63,6 +69,30 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
     
     toast.success(language === 'ar' ? 'تم تحميل الاستيكر بنجاح' : 'Sticker downloaded successfully');
   }, [name, language]);
+
+  // Render stars based on rating
+  const renderStars = (rating: number) => {
+    const fullStars = Math.floor(rating);
+    const hasHalf = rating % 1 >= 0.5;
+    const stars = [];
+    
+    for (let i = 0; i < 5; i++) {
+      if (i < fullStars) {
+        stars.push(
+          <Star key={i} className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+        );
+      } else if (i === fullStars && hasHalf) {
+        stars.push(
+          <Star key={i} className="w-5 h-5 text-yellow-400 fill-yellow-400/50" />
+        );
+      } else {
+        stars.push(
+          <Star key={i} className="w-5 h-5 text-yellow-400/30" />
+        );
+      }
+    }
+    return stars;
+  };
 
   return (
     <div className="space-y-6">
@@ -87,25 +117,71 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
           style={{ fontFamily: language === 'ar' ? 'Noto Sans Arabic, sans-serif' : 'Plus Jakarta Sans, sans-serif' }}
           dir={language === 'ar' ? 'rtl' : 'ltr'}
         >
-          {/* Header */}
-          <div className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-primary-foreground p-6 text-center">
-            <div className="w-16 h-16 mx-auto mb-3 bg-white/20 rounded-full flex items-center justify-center">
-              <span className="text-3xl font-bold">{name.charAt(0)}</span>
-            </div>
-            <h1 className="text-xl font-bold mb-1">{name}</h1>
-            {business.rating && (
-              <div className="flex items-center justify-center gap-1 text-sm opacity-90">
-                <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                <span className="font-semibold">{business.rating}</span>
-                <span>({business.totalReviews})</span>
+          {/* Hero Image Header */}
+          {heroImage ? (
+            <div className="relative h-40 overflow-hidden">
+              <img 
+                src={heroImage} 
+                alt={name}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 p-4 text-white text-center">
+                <h1 className="text-xl font-bold drop-shadow-lg">{name}</h1>
+                {business.types?.[0] && (
+                  <p className="text-sm opacity-90">{business.types[0]}</p>
+                )}
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-primary-foreground p-6 text-center">
+              <div className="w-16 h-16 mx-auto mb-3 bg-white/20 rounded-full flex items-center justify-center">
+                <span className="text-3xl font-bold">{name.charAt(0)}</span>
+              </div>
+              <h1 className="text-xl font-bold mb-1">{name}</h1>
+            </div>
+          )}
+          
+          {/* Rating Section - Like Website */}
+          {business.rating && (
+            <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 p-4 border-b">
+              <div className="flex items-center justify-center gap-3">
+                <div className="flex items-center gap-1">
+                  {renderStars(business.rating)}
+                </div>
+                <div className="text-center">
+                  <span className="text-2xl font-bold text-primary">{business.rating}</span>
+                  <span className="text-sm text-muted-foreground mx-1">/</span>
+                  <span className="text-sm text-muted-foreground">5</span>
+                </div>
+              </div>
+              <p className="text-center text-sm text-muted-foreground mt-1">
+                {language === 'ar' 
+                  ? `${business.totalReviews} تقييم من العملاء`
+                  : `${business.totalReviews} customer reviews`}
+              </p>
+            </div>
+          )}
+          
+          {/* Photo Gallery Strip */}
+          {displayPhotos.length > 0 && (
+            <div className="flex gap-1 p-2 bg-secondary/20">
+              {displayPhotos.map((photo, index) => (
+                <div key={index} className="flex-1 h-20 overflow-hidden rounded-lg">
+                  <img 
+                    src={photo} 
+                    alt={`${name} ${index + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
           
           {/* Main Content */}
-          <div className="p-6 text-center space-y-4">
+          <div className="p-5 text-center space-y-4">
             {/* Trust Message */}
-            <div className="space-y-2">
+            <div className="space-y-1">
               <p className="text-lg font-bold text-foreground leading-relaxed">
                 {language === 'ar' 
                   ? 'لأننا نثق في جودة خدماتنا' 
@@ -119,40 +195,50 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
             </div>
             
             {/* Main QR Code for Google Reviews */}
-            <div className="py-4">
-              <div className="inline-block p-4 bg-secondary/50 rounded-xl">
+            <div className="py-3">
+              <div className="inline-block p-3 bg-secondary/50 rounded-xl">
                 <QRCodeSVG
                   value={reviewUrl}
-                  size={160}
+                  size={140}
                   level="H"
                   includeMargin={false}
                   bgColor="transparent"
                   fgColor="#000000"
                 />
               </div>
-              <p className="mt-3 text-sm font-semibold text-primary">
+              <p className="mt-2 text-sm font-semibold text-primary">
                 {language === 'ar' 
                   ? 'امسح للتقييم على جوجل' 
                   : 'Scan to rate on Google'}
               </p>
             </div>
             
-            {/* Decorative Stars */}
-            <div className="flex justify-center gap-1">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <Star 
-                  key={star} 
-                  className="w-6 h-6 text-yellow-400 fill-yellow-400" 
-                />
-              ))}
+            {/* Business Info */}
+            <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+              {business.address && (
+                <div className="flex items-center gap-1">
+                  <MapPin className="w-3 h-3" />
+                  <span className="truncate max-w-[150px]">{business.address.split(',')[0]}</span>
+                </div>
+              )}
+              {business.isOpen !== undefined && (
+                <div className="flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  <span className={business.isOpen ? 'text-green-600' : 'text-red-500'}>
+                    {business.isOpen 
+                      ? (language === 'ar' ? 'مفتوح' : 'Open')
+                      : (language === 'ar' ? 'مغلق' : 'Closed')}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
           
           {/* Footer */}
-          <div className="bg-secondary/30 p-4 border-t">
-            <div className="flex items-center justify-between gap-4">
+          <div className="bg-secondary/30 p-3 border-t">
+            <div className="flex items-center justify-between gap-3">
               <div className="flex-1 text-xs text-muted-foreground">
-                <p className="font-medium mb-1">
+                <p className="font-medium mb-0.5">
                   {language === 'ar' 
                     ? 'لطلب استيكر كهذا' 
                     : 'To order a sticker like this'}
@@ -165,7 +251,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
               <div className="flex-shrink-0">
                 <QRCodeSVG
                   value={whatsappUrl}
-                  size={50}
+                  size={45}
                   level="M"
                   includeMargin={false}
                   bgColor="transparent"
