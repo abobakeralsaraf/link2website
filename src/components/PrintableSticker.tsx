@@ -13,63 +13,63 @@ interface PrintableStickerProps {
 export function PrintableSticker({ business }: PrintableStickerProps) {
   const { language } = useLanguage();
   const stickerRef = useRef<HTMLDivElement>(null);
-  
+
   const name = language === 'ar' && business.nameAr ? business.nameAr : business.name;
-  
+
   // Google Maps review link using place_id
   const reviewUrl = business.placeId 
     ? `https://search.google.com/local/writereview?placeid=${business.placeId}`
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(business.address)}`;
-  
+
   // WhatsApp link for ordering stickers
   const whatsappNumber = '201514167733';
   const whatsappUrl = `https://wa.me/${whatsappNumber}`;
 
   // Get hero image (first photo)
   const heroImage = business.photos?.[0];
-  
+
   // Get display photos (up to 3 small ones)
   const displayPhotos = business.photos?.slice(1, 4) || [];
-  
+
   // Get top reviews (up to 2)
   const topReviews = business.reviews?.slice(0, 2) || [];
-  
+
   const handlePrint = useCallback(() => {
     window.print();
   }, []);
-  
+
   const handleDownloadSVG = useCallback(() => {
     if (!stickerRef.current) return;
-    
+
     // Clone the sticker element
     const clone = stickerRef.current.cloneNode(true) as HTMLElement;
-    
+
     // Create SVG wrapper
     const svgNS = 'http://www.w3.org/2000/svg';
     const svg = document.createElementNS(svgNS, 'svg');
     svg.setAttribute('xmlns', svgNS);
     svg.setAttribute('width', '400');
     svg.setAttribute('height', '700');
-    
+
     // Create foreignObject to embed HTML
     const foreignObject = document.createElementNS(svgNS, 'foreignObject');
     foreignObject.setAttribute('width', '100%');
     foreignObject.setAttribute('height', '100%');
     foreignObject.appendChild(clone);
     svg.appendChild(foreignObject);
-    
+
     // Serialize and download
     const serializer = new XMLSerializer();
     const svgString = serializer.serializeToString(svg);
     const blob = new Blob([svgString], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
-    
+
     const link = document.createElement('a');
     link.download = `${name.replace(/\s+/g, '-').toLowerCase()}-sticker.svg`;
     link.href = url;
     link.click();
     URL.revokeObjectURL(url);
-    
+
     toast.success(language === 'ar' ? 'تم تحميل الاستيكر بنجاح' : 'Sticker downloaded successfully');
   }, [name, language]);
 
