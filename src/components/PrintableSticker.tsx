@@ -3,7 +3,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { BusinessData } from '@/lib/types';
 import { useLanguage } from '@/hooks/useLanguage';
 import { Button } from '@/components/ui/button';
-import { Download, Printer, Star, MapPin, Clock } from 'lucide-react';
+import { Download, Printer, Star, MapPin, Clock, Quote, User } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface PrintableStickerProps {
@@ -30,6 +30,9 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
   
   // Get display photos (up to 3 small ones)
   const displayPhotos = business.photos?.slice(1, 4) || [];
+  
+  // Get top reviews (up to 2)
+  const topReviews = business.reviews?.slice(0, 2) || [];
   
   const handlePrint = useCallback(() => {
     window.print();
@@ -178,35 +181,71 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
             </div>
           )}
           
+          {/* Customer Reviews Section */}
+          {topReviews.length > 0 && (
+            <div className="p-3 space-y-2">
+              {topReviews.map((review, index) => (
+                <div key={index} className="bg-secondary/30 rounded-xl p-3 relative">
+                  <Quote className="absolute top-2 right-2 w-4 h-4 text-primary/20" />
+                  <div className="flex items-center gap-2 mb-1">
+                    {review.authorPhoto ? (
+                      <img
+                        src={review.authorPhoto}
+                        alt={review.authorName}
+                        className="w-6 h-6 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
+                        <User className="w-3 h-3 text-primary" />
+                      </div>
+                    )}
+                    <span className="text-xs font-semibold text-foreground">{review.authorName}</span>
+                    <div className="flex items-center gap-0.5 ms-auto">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`w-3 h-3 ${i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/30'}`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground line-clamp-2 leading-relaxed">
+                    {language === 'ar' && review.textAr ? review.textAr : review.text}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+          
           {/* Main Content */}
-          <div className="p-5 text-center space-y-4">
+          <div className="p-4 text-center space-y-3">
             {/* Trust Message */}
-            <div className="space-y-1">
-              <p className="text-lg font-bold text-foreground leading-relaxed">
+            <div className="space-y-0.5">
+              <p className="text-base font-bold text-foreground leading-relaxed">
                 {language === 'ar' 
                   ? 'لأننا نثق في جودة خدماتنا' 
                   : 'Because we trust our service quality'}
               </p>
-              <p className="text-muted-foreground font-medium">
+              <p className="text-sm text-muted-foreground font-medium">
                 {language === 'ar' 
                   ? 'ندعو الجميع لتقييمنا' 
                   : 'We invite everyone to rate us'}
               </p>
             </div>
             
-            {/* Main QR Code for Google Reviews */}
-            <div className="py-3">
-              <div className="inline-block p-3 bg-secondary/50 rounded-xl">
+            {/* Smaller QR Code for Google Reviews */}
+            <div className="py-2">
+              <div className="inline-block p-2 bg-secondary/50 rounded-lg">
                 <QRCodeSVG
                   value={reviewUrl}
-                  size={140}
+                  size={100}
                   level="H"
                   includeMargin={false}
                   bgColor="transparent"
                   fgColor="#000000"
                 />
               </div>
-              <p className="mt-2 text-sm font-semibold text-primary">
+              <p className="mt-1.5 text-xs font-semibold text-primary">
                 {language === 'ar' 
                   ? 'امسح للتقييم على جوجل' 
                   : 'Scan to rate on Google'}
@@ -214,16 +253,16 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
             </div>
             
             {/* Business Info */}
-            <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+            <div className="flex items-center justify-center gap-3 text-[10px] text-muted-foreground">
               {business.address && (
                 <div className="flex items-center gap-1">
-                  <MapPin className="w-3 h-3" />
-                  <span className="truncate max-w-[150px]">{business.address.split(',')[0]}</span>
+                  <MapPin className="w-2.5 h-2.5" />
+                  <span className="truncate max-w-[120px]">{business.address.split(',')[0]}</span>
                 </div>
               )}
               {business.isOpen !== undefined && (
                 <div className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
+                  <Clock className="w-2.5 h-2.5" />
                   <span className={business.isOpen ? 'text-green-600' : 'text-red-500'}>
                     {business.isOpen 
                       ? (language === 'ar' ? 'مفتوح' : 'Open')
