@@ -268,7 +268,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
         <div
           ref={stickerRef}
           id="printable-sticker"
-          className="w-[400px] bg-white rounded-2xl shadow-2xl overflow-hidden border-4 border-primary/20"
+          className="w-[400px] bg-white rounded-2xl shadow-2xl overflow-hidden"
           style={{ fontFamily: language === 'ar' ? 'Noto Sans Arabic, sans-serif' : 'Plus Jakarta Sans, sans-serif' }}
           dir={language === 'ar' ? 'rtl' : 'ltr'}
         >
@@ -299,7 +299,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
           
           {/* Rating Section - Like Website */}
           {business.rating && (
-            <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 p-4 border-b">
+            <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 p-4">
               <div className="flex items-center justify-center gap-3">
                 <div className="flex items-center gap-1">
                   {renderStars(business.rating)}
@@ -322,7 +322,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
           {displayPhotos.length > 0 && (
             <div className="flex gap-1 p-2 bg-secondary/20">
               {displayPhotos.map((photo, index) => (
-                <div key={index} className="flex-1 h-20 overflow-hidden rounded-lg">
+                <div key={index} className="flex-1 h-20 overflow-hidden">
                   <img 
                     src={photo} 
                     alt={`${name} ${index + 1}`}
@@ -337,7 +337,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
           {topReviews.length > 0 && (
             <div className="p-3 space-y-2">
               {topReviews.map((review, index) => (
-                <div key={index} className="bg-secondary/30 rounded-xl p-3 relative">
+                <div key={index} className="bg-secondary/30 p-3 relative">
                   <Quote className="absolute top-2 right-2 w-4 h-4 text-primary/20" />
                   <div className="flex items-center gap-2 mb-1">
                     {review.authorPhoto ? (
@@ -387,7 +387,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
             
             {/* Smaller QR Code for Google Reviews */}
             <div className="py-2">
-              <div className="inline-block p-2 bg-secondary/50 rounded-lg">
+              <div className="inline-block p-2 bg-secondary/50">
                 <QRCodeSVG
                   value={reviewUrl}
                   size={100}
@@ -426,7 +426,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
           </div>
           
           {/* Footer */}
-          <div className="bg-secondary/30 p-3 border-t">
+          <div className="bg-secondary/30 p-3">
             <div className="flex items-center justify-between gap-3">
               <div className="flex-1 text-xs text-muted-foreground">
                 <p className="font-medium mb-0.5">
