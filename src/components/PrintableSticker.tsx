@@ -72,11 +72,9 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
     return `${base}/functions/v1/image-proxy?url=${encodeURIComponent(src)}`;
   }, []);
 
-  const renderStickerPng = useCallback(async () => {
+  const renderStickerWebp = useCallback(async () => {
     if (!stickerRef.current) return null;
 
-    // Use the *real* node size (not the clone) to avoid rare cases where the clone
-    // measures huge and produces a mostly blank image.
     const srcRect = stickerRef.current.getBoundingClientRect();
 
     // Temporarily disable Google Fonts stylesheet links to avoid cssRules SecurityError
@@ -86,27 +84,18 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
     const prevDisabled = fontLinks.map((l) => l.disabled);
     fontLinks.forEach((l) => (l.disabled = true));
 
-    // Clone sticker and proxy external images (Google photos/avatars) so export works
+    // Clone sticker and proxy external images
     const clone = stickerRef.current.cloneNode(true) as HTMLElement;
     clone.removeAttribute('id');
 
-    // Lock base size for consistent rendering
     const baseW = Math.max(1, Math.round(srcRect.width));
     const baseH = Math.max(1, Math.round(srcRect.height));
     clone.style.width = `${baseW}px`;
     clone.style.height = `${baseH}px`;
     clone.style.background = '#ffffff';
 
-    // Remove runtime <style> blocks (our print CSS) from the clone to avoid side-effects during capture
+    // Remove runtime <style> blocks from the clone
     Array.from(clone.querySelectorAll('style')).forEach((s) => s.remove());
-
-    // Force-remove borders/outlines/shadows on clone to avoid "cut lines" artifacts in rasterization
-    const harden = document.createElement('style');
-    harden.textContent = `
-      * { box-shadow: none !important; outline: none !important; border-color: transparent !important; }
-      img { display: block !important; }
-    `;
-    clone.prepend(harden);
 
     const imgs = Array.from(clone.querySelectorAll<HTMLImageElement>('img'));
     imgs.forEach((img) => {
@@ -116,7 +105,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
       }
     });
 
-    // Put clone offscreen so it can be measured/rendered
+    // Put clone offscreen
     const stage = document.createElement('div');
     stage.style.position = 'fixed';
     stage.style.left = '-10000px';
@@ -130,7 +119,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
     document.body.appendChild(stage);
 
     try {
-      // Wait for images in the clone to finish loading (or timeout)
+      // Wait for images to load
       await Promise.race([
         Promise.all(
           imgs.map(
@@ -146,7 +135,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
       ]);
 
       const scale = 3;
-      const dataUrl = await domtoimage.toPng(clone, {
+      const pngDataUrl = await domtoimage.toPng(clone, {
         cacheBust: true,
         bgcolor: '#ffffff',
         width: Math.max(1, Math.round(baseW * scale)),
@@ -160,18 +149,13 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
         },
       } as any);
 
-      return dataUrl;
+      // Convert to WebP
+      return convertDataUrlToWebp(pngDataUrl, 0.92);
     } finally {
       document.body.removeChild(stage);
       fontLinks.forEach((l, i) => (l.disabled = prevDisabled[i]));
     }
   }, [getProxyUrl, language]);
-
-  const renderStickerWebp = useCallback(async () => {
-    const png = await renderStickerPng();
-    if (!png) return null;
-    return convertDataUrlToWebp(png, 0.92);
-  }, [renderStickerPng]);
 
   const handleDownload = useCallback(async () => {
     if (!stickerRef.current) return;
