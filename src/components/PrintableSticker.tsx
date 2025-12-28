@@ -1,17 +1,16 @@
 import { useRef, useCallback, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import domtoimage from 'dom-to-image-more';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import { BusinessData } from '@/lib/types';
 import { useLanguage } from '@/hooks/useLanguage';
 import { Button } from '@/components/ui/button';
-import { Download, Printer, Star, MapPin, Clock, Quote, User, Loader2 } from 'lucide-react';
+import { Download, Printer, Star, MapPin, Clock, Quote, User, Loader2, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface PrintableStickerProps {
   business: BusinessData;
 }
-
-
 
 function dataUrlToBlob(dataUrl: string): Promise<Blob> {
   return fetch(dataUrl).then((r) => r.blob());
@@ -29,7 +28,6 @@ async function convertDataUrlToWebp(dataUrl: string, quality = 0.92): Promise<st
 
   ctx.drawImage(img, 0, 0);
 
-  // Some browsers may not support webp; fall back to PNG data URL.
   try {
     const webp = canvas.toDataURL('image/webp', quality);
     if (webp.startsWith('data:image/webp')) return webp;
@@ -43,29 +41,24 @@ async function convertDataUrlToWebp(dataUrl: string, quality = 0.92): Promise<st
 export function PrintableSticker({ business }: PrintableStickerProps) {
   const { language } = useLanguage();
   const stickerRef = useRef<HTMLDivElement>(null);
-  const actionLockRef = useRef<null | 'download' | 'print'>(null);
+  const actionLockRef = useRef<null | 'download' | 'print' | 'pdf'>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   const name = language === 'ar' && business.nameAr ? business.nameAr : business.name;
 
-  // Google Maps review link using place_id
   const reviewUrl = business.placeId 
     ? `https://search.google.com/local/writereview?placeid=${business.placeId}`
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(business.address)}`;
 
-  // WhatsApp link for ordering stickers
   const whatsappNumber = '201514167733';
   const whatsappUrl = `https://wa.me/${whatsappNumber}`;
 
-  // Get hero image (first photo)
   const heroImage = business.photos?.[0];
-
-  // Get display photos (up to 3 small ones)
   const displayPhotos = business.photos?.slice(1, 4) || [];
-
-  // Get top reviews (up to 2)
   const topReviews = business.reviews?.slice(0, 2) || [];
+
   const getProxyUrl = useCallback((src: string) => {
     const base = import.meta.env.VITE_SUPABASE_URL;
     return `${base}/functions/v1/image-proxy?url=${encodeURIComponent(src)}`;
@@ -74,33 +67,24 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
   const renderStickerWebp = useCallback(async () => {
     if (!stickerRef.current) return null;
 
-    // Use offset sizes (integers) to reduce sub-pixel hairline artifacts
     const baseW = Math.max(1, Math.round(stickerRef.current.offsetWidth));
     const baseH = Math.max(1, Math.round(stickerRef.current.offsetHeight));
 
-    // Clone sticker for capture (avoids mutating what the user sees)
     const clone = stickerRef.current.cloneNode(true) as HTMLElement;
     clone.removeAttribute('id');
     clone.style.width = `${baseW}px`;
     clone.style.height = `${baseH}px`;
     clone.style.background = '#ffffff';
-
-    // Ensure capture uses the same fonts that are already loaded in the app
-    // (prevents wrapping differences during capture)
     clone.style.fontFamily = language === 'ar' ? 'Tajawal, sans-serif' : 'Inter, sans-serif';
 
-    // Remove runtime <style> blocks from the clone
     Array.from(clone.querySelectorAll('style')).forEach((s) => s.remove());
 
-    // Add a tiny reset to prevent accidental outlines/rings from appearing in export
     const resetStyle = document.createElement('style');
     resetStyle.textContent = `
-      *, *::before, *::after { outline: none !important; }
-      [data-radix-popper-content-wrapper] { outline: none !important; }
+      *, *::before, *::after { outline: none !important; border: none !important; box-shadow: none !important; }
     `;
     clone.prepend(resetStyle);
 
-    // Proxy external images to avoid CORS-taint (otherwise images disappear)
     const imgs = Array.from(clone.querySelectorAll<HTMLImageElement>('img'));
     imgs.forEach((img) => {
       const src = img.getAttribute('src') || '';
@@ -110,7 +94,6 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
       img.decoding = 'sync';
     });
 
-    // Put clone offscreen
     const stage = document.createElement('div');
     stage.style.position = 'fixed';
     stage.style.left = '-10000px';
@@ -124,13 +107,10 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
     document.body.appendChild(stage);
 
     try {
-      // Wait for images to decode (avoid blank photos/avatars)
       await Promise.race([
         Promise.allSettled(
           imgs.map(async (img) => {
             try {
-              // If decode exists, it's the most reliable signal
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const anyImg = img as any;
               if (typeof anyImg.decode === 'function') await anyImg.decode();
               else if (!img.complete) {
@@ -147,26 +127,143 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
         new Promise<void>((resolve) => setTimeout(resolve, 6000)),
       ]);
 
-      // Lower scale reduces hairline artifacts while keeping good clarity
-      const scale = 2;
-      const pngDataUrl = await domtoimage.toPng(clone, {
-        cacheBust: true,
-        bgcolor: '#ffffff',
-        width: Math.max(1, Math.round(baseW * scale)),
-        height: Math.max(1, Math.round(baseH * scale)),
-        style: {
-          transform: `scale(${scale})`,
-          transformOrigin: 'top left',
-          width: `${baseW}px`,
-          height: `${baseH}px`,
-        },
-      } as any);
+      const canvas = await html2canvas(clone, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        allowTaint: false,
+        logging: false,
+      });
 
+      const pngDataUrl = canvas.toDataURL('image/png');
       return convertDataUrlToWebp(pngDataUrl, 0.92);
     } finally {
       document.body.removeChild(stage);
     }
   }, [getProxyUrl, language]);
+
+  const handleDownloadPdf = useCallback(async () => {
+    if (!stickerRef.current) return;
+    if (actionLockRef.current) return;
+
+    actionLockRef.current = 'pdf';
+    setIsGeneratingPdf(true);
+
+    try {
+      const element = stickerRef.current;
+      const baseW = element.offsetWidth;
+      const baseH = element.offsetHeight;
+
+      // Clone for capture
+      const clone = element.cloneNode(true) as HTMLElement;
+      clone.removeAttribute('id');
+      clone.style.width = `${baseW}px`;
+      clone.style.height = `${baseH}px`;
+      clone.style.background = '#ffffff';
+      clone.style.fontFamily = language === 'ar' ? 'Tajawal, sans-serif' : 'Inter, sans-serif';
+
+      // Remove all borders/shadows in clone
+      const resetStyle = document.createElement('style');
+      resetStyle.textContent = `
+        *, *::before, *::after { outline: none !important; border: none !important; box-shadow: none !important; }
+      `;
+      clone.prepend(resetStyle);
+
+      // Proxy images
+      const imgs = Array.from(clone.querySelectorAll<HTMLImageElement>('img'));
+      imgs.forEach((img) => {
+        const src = img.getAttribute('src') || '';
+        if (/^https?:\/\//.test(src) && !src.startsWith(window.location.origin)) {
+          img.setAttribute('src', getProxyUrl(src));
+        }
+        img.decoding = 'sync';
+      });
+
+      // Stage offscreen
+      const stage = document.createElement('div');
+      stage.style.position = 'fixed';
+      stage.style.left = '-10000px';
+      stage.style.top = '0';
+      stage.style.zIndex = '-1';
+      stage.style.background = '#ffffff';
+      stage.appendChild(clone);
+      document.body.appendChild(stage);
+
+      // Wait for images
+      await Promise.race([
+        Promise.allSettled(
+          imgs.map(async (img) => {
+            try {
+              const anyImg = img as any;
+              if (typeof anyImg.decode === 'function') await anyImg.decode();
+              else if (!img.complete) {
+                await new Promise<void>((resolve) => {
+                  img.onload = () => resolve();
+                  img.onerror = () => resolve();
+                });
+              }
+            } catch {}
+          }),
+        ),
+        new Promise<void>((resolve) => setTimeout(resolve, 6000)),
+      ]);
+
+      // High-quality capture with scale 4
+      const canvas = await html2canvas(clone, {
+        scale: 4,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        allowTaint: false,
+        logging: false,
+      });
+
+      document.body.removeChild(stage);
+
+      // Create PDF with 1:2 aspect ratio (width:height)
+      // Using mm units, 100mm x 200mm (suitable for 40cm x 80cm when scaled)
+      const pdfWidth = 100;
+      const pdfHeight = 200;
+      
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [pdfWidth, pdfHeight],
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      
+      // Calculate dimensions to fit while maintaining aspect ratio
+      const canvasRatio = canvas.width / canvas.height;
+      const pdfRatio = pdfWidth / pdfHeight;
+      
+      let imgWidth = pdfWidth;
+      let imgHeight = pdfHeight;
+      let offsetX = 0;
+      let offsetY = 0;
+      
+      if (canvasRatio > pdfRatio) {
+        // Canvas is wider, fit to width
+        imgHeight = pdfWidth / canvasRatio;
+        offsetY = (pdfHeight - imgHeight) / 2;
+      } else {
+        // Canvas is taller, fit to height
+        imgWidth = pdfHeight * canvasRatio;
+        offsetX = (pdfWidth - imgWidth) / 2;
+      }
+
+      pdf.addImage(imgData, 'PNG', offsetX, offsetY, imgWidth, imgHeight);
+
+      pdf.save(`${name.replace(/\s+/g, '-').toLowerCase()}-sticker.pdf`);
+
+      toast.success(language === 'ar' ? 'تم تحميل PDF عالي الجودة' : 'High-quality PDF downloaded');
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast.error(language === 'ar' ? 'حدث خطأ أثناء إنشاء PDF' : 'PDF generation failed');
+    } finally {
+      setIsGeneratingPdf(false);
+      actionLockRef.current = null;
+    }
+  }, [name, language, getProxyUrl]);
 
   const handleDownload = useCallback(async () => {
     if (!stickerRef.current) return;
@@ -247,7 +344,6 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
     }
   }, [language, name, renderStickerWebp]);
 
-  // Render stars based on rating
   const renderStars = (rating: number) => {
     const fullStars = Math.floor(rating);
     const hasHalf = rating % 1 >= 0.5;
@@ -277,32 +373,41 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
       <div className="flex flex-wrap gap-3 justify-center print:hidden">
         <Button
           type="button"
-          onPointerDown={(e) => {
-            e.stopPropagation();
-          }}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
             void handleDownload();
           }}
-          disabled={isDownloading || isPrinting}
+          disabled={isDownloading || isPrinting || isGeneratingPdf}
           className="gap-2"
         >
           {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-          {language === 'ar' ? 'تحميل' : 'Download'}
+          {language === 'ar' ? 'تحميل WebP' : 'Download WebP'}
         </Button>
 
         <Button
           type="button"
-          onPointerDown={(e) => {
+          onClick={(e) => {
+            e.preventDefault();
             e.stopPropagation();
+            void handleDownloadPdf();
           }}
+          disabled={isDownloading || isPrinting || isGeneratingPdf}
+          variant="default"
+          className="gap-2 bg-red-600 hover:bg-red-700"
+        >
+          {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+          {language === 'ar' ? 'PDF للطباعة' : 'Print-Ready PDF'}
+        </Button>
+
+        <Button
+          type="button"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
             void handlePrint();
           }}
-          disabled={isDownloading || isPrinting}
+          disabled={isDownloading || isPrinting || isGeneratingPdf}
           variant="outline"
           className="gap-2"
         >
@@ -311,12 +416,12 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
         </Button>
       </div>
       
-      {/* Printable Sticker */}
+      {/* Printable Sticker - Seamless poster design */}
       <div className="flex justify-center">
         <div
           ref={stickerRef}
           id="printable-sticker"
-          className="w-[400px] bg-white rounded-2xl overflow-hidden"
+          className="w-[400px] bg-white overflow-hidden"
           style={{ fontFamily: language === 'ar' ? 'Tajawal, sans-serif' : 'Inter, sans-serif' }}
           dir={language === 'ar' ? 'rtl' : 'ltr'}
         >
@@ -347,9 +452,9 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
             </div>
           )}
           
-          {/* Rating Section - Like Website */}
+          {/* Rating Section */}
           {business.rating && (
-            <div className="bg-white p-4">
+            <div className="bg-white px-4 pt-4 pb-2">
               <div className="flex items-center justify-center gap-3">
                 <div className="flex items-center gap-1">
                   {renderStars(business.rating)}
@@ -370,9 +475,9 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
           
           {/* Photo Gallery Strip */}
           {displayPhotos.length > 0 && (
-            <div className="flex gap-1 p-2 bg-white">
+            <div className="flex gap-1 px-4 py-2 bg-white">
               {displayPhotos.map((photo, index) => (
-                <div key={index} className="flex-1 h-20 overflow-hidden">
+                <div key={index} className="flex-1 h-20 overflow-hidden rounded-sm">
                   <img 
                     src={photo} 
                     alt={`${name} ${index + 1}`}
@@ -387,9 +492,9 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
           
           {/* Customer Reviews Section */}
           {topReviews.length > 0 && (
-            <div className="p-3 space-y-2">
+            <div className="px-4 py-2 space-y-2 bg-white">
               {topReviews.map((review, index) => (
-                <div key={index} className="bg-white p-3 relative">
+                <div key={index} className="relative bg-gray-50/50 rounded-lg p-3">
                   <Quote className="absolute top-2 right-2 w-4 h-4 text-primary/20" />
                   <div className="flex items-center gap-2 mb-1">
                     {review.authorPhoto ? (
@@ -423,9 +528,8 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
             </div>
           )}
           
-          {/* Main Content */}
-          <div className="p-4 text-center space-y-3">
-            {/* Trust Message */}
+          {/* Main Content - CTA */}
+          <div className="px-4 py-4 text-center bg-white">
             <div className="space-y-0.5">
               <p className="text-base font-bold text-foreground leading-relaxed">
                 {language === 'ar' 
@@ -439,8 +543,8 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
               </p>
             </div>
             
-            {/* Smaller QR Code for Google Reviews */}
-            <div className="py-2">
+            {/* QR Code */}
+            <div className="py-3">
               <div className="inline-block p-2 bg-white">
                 <QRCodeSVG
                   value={reviewUrl}
@@ -480,7 +584,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
           </div>
           
           {/* Footer */}
-          <div className="bg-white p-3">
+          <div className="bg-gray-50 px-4 py-3">
             <div className="flex items-center justify-between gap-3">
               <div className="flex-1 text-xs text-muted-foreground">
                 <p className="font-medium mb-0.5">
