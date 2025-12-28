@@ -8,9 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Download, Printer, Star, MapPin, Clock, Quote, User, Loader2, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface PrintableStickerProps {
+type PrintableStickerProps = {
   business: BusinessData;
-}
+};
 
 function dataUrlToBlob(dataUrl: string): Promise<Blob> {
   return fetch(dataUrl).then((r) => r.blob());
