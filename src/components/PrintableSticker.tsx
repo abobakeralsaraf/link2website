@@ -74,17 +74,9 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
   const renderStickerWebp = useCallback(async () => {
     if (!stickerRef.current) return null;
 
-    const srcRect = stickerRef.current.getBoundingClientRect();
-
-    // Temporarily disable Google Fonts stylesheet links to avoid cssRules SecurityError
-    const fontLinks = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')).filter((l) =>
-      l.href?.includes('fonts.googleapis.com'),
-    );
-    const prevDisabled = fontLinks.map((l) => l.disabled);
-    fontLinks.forEach((l) => (l.disabled = true));
-
-    const baseW = Math.max(1, Math.round(srcRect.width));
-    const baseH = Math.max(1, Math.round(srcRect.height));
+    // Use offset sizes (integers) to reduce sub-pixel hairline artifacts
+    const baseW = Math.max(1, Math.round(stickerRef.current.offsetWidth));
+    const baseH = Math.max(1, Math.round(stickerRef.current.offsetHeight));
 
     // Clone sticker for capture (avoids mutating what the user sees)
     const clone = stickerRef.current.cloneNode(true) as HTMLElement;
@@ -93,8 +85,20 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
     clone.style.height = `${baseH}px`;
     clone.style.background = '#ffffff';
 
+    // Ensure capture uses the same fonts that are already loaded in the app
+    // (prevents wrapping differences during capture)
+    clone.style.fontFamily = language === 'ar' ? 'Tajawal, sans-serif' : 'Inter, sans-serif';
+
     // Remove runtime <style> blocks from the clone
     Array.from(clone.querySelectorAll('style')).forEach((s) => s.remove());
+
+    // Add a tiny reset to prevent accidental outlines/rings from appearing in export
+    const resetStyle = document.createElement('style');
+    resetStyle.textContent = `
+      *, *::before, *::after { outline: none !important; }
+      [data-radix-popper-content-wrapper] { outline: none !important; }
+    `;
+    clone.prepend(resetStyle);
 
     // Proxy external images to avoid CORS-taint (otherwise images disappear)
     const imgs = Array.from(clone.querySelectorAll<HTMLImageElement>('img'));
@@ -103,6 +107,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
       if (/^https?:\/\//.test(src) && !src.startsWith(window.location.origin)) {
         img.setAttribute('src', getProxyUrl(src));
       }
+      img.decoding = 'sync';
     });
 
     // Put clone offscreen
@@ -119,22 +124,31 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
     document.body.appendChild(stage);
 
     try {
-      // Wait a moment for proxied images to settle
+      // Wait for images to decode (avoid blank photos/avatars)
       await Promise.race([
-        Promise.all(
-          imgs.map(
-            (img) =>
-              new Promise<void>((resolve) => {
-                if (img.complete) return resolve();
-                img.onload = () => resolve();
-                img.onerror = () => resolve();
-              }),
-          ),
-        ).then(() => undefined),
-        new Promise<void>((resolve) => setTimeout(resolve, 2000)),
+        Promise.allSettled(
+          imgs.map(async (img) => {
+            try {
+              // If decode exists, it's the most reliable signal
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const anyImg = img as any;
+              if (typeof anyImg.decode === 'function') await anyImg.decode();
+              else if (!img.complete) {
+                await new Promise<void>((resolve) => {
+                  img.onload = () => resolve();
+                  img.onerror = () => resolve();
+                });
+              }
+            } catch {
+              // ignore
+            }
+          }),
+        ) as unknown as Promise<void>,
+        new Promise<void>((resolve) => setTimeout(resolve, 6000)),
       ]);
 
-      const scale = 3;
+      // Lower scale reduces hairline artifacts while keeping good clarity
+      const scale = 2;
       const pngDataUrl = await domtoimage.toPng(clone, {
         cacheBust: true,
         bgcolor: '#ffffff',
@@ -145,19 +159,14 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
           transformOrigin: 'top left',
           width: `${baseW}px`,
           height: `${baseH}px`,
-          // Kill any accidental outlines/borders in capture without changing the real UI
-          outline: 'none',
-          border: 'none',
-          boxShadow: 'none',
         },
       } as any);
 
       return convertDataUrlToWebp(pngDataUrl, 0.92);
     } finally {
       document.body.removeChild(stage);
-      fontLinks.forEach((l, i) => (l.disabled = prevDisabled[i]));
     }
-  }, [getProxyUrl]);
+  }, [getProxyUrl, language]);
 
   const handleDownload = useCallback(async () => {
     if (!stickerRef.current) return;
@@ -308,7 +317,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
           ref={stickerRef}
           id="printable-sticker"
           className="w-[400px] bg-white rounded-2xl overflow-hidden"
-          style={{ fontFamily: language === 'ar' ? 'Noto Sans Arabic, sans-serif' : 'Plus Jakarta Sans, sans-serif' }}
+          style={{ fontFamily: language === 'ar' ? 'Tajawal, sans-serif' : 'Inter, sans-serif' }}
           dir={language === 'ar' ? 'rtl' : 'ltr'}
         >
           {/* Hero Image Header */}
