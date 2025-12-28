@@ -67,95 +67,28 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
   // Get top reviews (up to 2)
   const topReviews = business.reviews?.slice(0, 2) || [];
 
-  const getProxyUrl = useCallback((src: string) => {
-    const base = import.meta.env.VITE_SUPABASE_URL;
-    return `${base}/functions/v1/image-proxy?url=${encodeURIComponent(src)}`;
-  }, []);
 
   const renderStickerWebp = useCallback(async () => {
     if (!stickerRef.current) return null;
 
-    const srcRect = stickerRef.current.getBoundingClientRect();
+    const scale = 3;
+    const rect = stickerRef.current.getBoundingClientRect();
 
-    // Temporarily disable Google Fonts stylesheet links to avoid cssRules SecurityError
-    const fontLinks = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')).filter((l) =>
-      l.href?.includes('fonts.googleapis.com'),
-    );
-    const prevDisabled = fontLinks.map((l) => l.disabled);
-    fontLinks.forEach((l) => (l.disabled = true));
+    // Capture directly without cloning
+    const pngDataUrl = await domtoimage.toPng(stickerRef.current, {
+      cacheBust: true,
+      bgcolor: '#ffffff',
+      width: Math.round(rect.width * scale),
+      height: Math.round(rect.height * scale),
+      style: {
+        transform: `scale(${scale})`,
+        transformOrigin: 'top left',
+      },
+    } as any);
 
-    // Clone sticker and proxy external images
-    const clone = stickerRef.current.cloneNode(true) as HTMLElement;
-    clone.removeAttribute('id');
-
-    const baseW = Math.max(1, Math.round(srcRect.width));
-    const baseH = Math.max(1, Math.round(srcRect.height));
-    clone.style.width = `${baseW}px`;
-    clone.style.height = `${baseH}px`;
-    clone.style.background = '#ffffff';
-
-    // Remove runtime <style> blocks from the clone
-    Array.from(clone.querySelectorAll('style')).forEach((s) => s.remove());
-
-    const imgs = Array.from(clone.querySelectorAll<HTMLImageElement>('img'));
-    imgs.forEach((img) => {
-      const src = img.getAttribute('src') || '';
-      if (/^https?:\/\//.test(src) && !src.startsWith(window.location.origin)) {
-        img.setAttribute('src', getProxyUrl(src));
-      }
-    });
-
-    // Put clone offscreen
-    const stage = document.createElement('div');
-    stage.style.position = 'fixed';
-    stage.style.left = '-10000px';
-    stage.style.top = '0';
-    stage.style.zIndex = '-1';
-    stage.style.background = '#ffffff';
-    stage.style.display = 'inline-block';
-    stage.style.width = `${baseW}px`;
-    stage.style.height = `${baseH}px`;
-    stage.appendChild(clone);
-    document.body.appendChild(stage);
-
-    try {
-      // Wait for images to load
-      await Promise.race([
-        Promise.all(
-          imgs.map(
-            (img) =>
-              new Promise<void>((resolve) => {
-                if (img.complete) return resolve();
-                img.onload = () => resolve();
-                img.onerror = () => resolve();
-              }),
-          ),
-        ).then(() => undefined),
-        new Promise<void>((resolve) => setTimeout(resolve, 2000)),
-      ]);
-
-      const scale = 3;
-      const pngDataUrl = await domtoimage.toPng(clone, {
-        cacheBust: true,
-        bgcolor: '#ffffff',
-        width: Math.max(1, Math.round(baseW * scale)),
-        height: Math.max(1, Math.round(baseH * scale)),
-        style: {
-          transform: `scale(${scale})`,
-          transformOrigin: 'top left',
-          width: `${baseW}px`,
-          height: `${baseH}px`,
-          fontFamily: language === 'ar' ? 'Tajawal, Arial, sans-serif' : 'Inter, Arial, sans-serif',
-        },
-      } as any);
-
-      // Convert to WebP
-      return convertDataUrlToWebp(pngDataUrl, 0.92);
-    } finally {
-      document.body.removeChild(stage);
-      fontLinks.forEach((l, i) => (l.disabled = prevDisabled[i]));
-    }
-  }, [getProxyUrl, language]);
+    // Convert to WebP
+    return convertDataUrlToWebp(pngDataUrl, 0.92);
+  }, []);
 
   const handleDownload = useCallback(async () => {
     if (!stickerRef.current) return;
