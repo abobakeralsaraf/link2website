@@ -2,7 +2,7 @@ import { useRef, useCallback, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { BusinessData } from '@/lib/types';
+import type { BusinessData } from '@/lib/types';
 import { useLanguage } from '@/hooks/useLanguage';
 import { Button } from '@/components/ui/button';
 import { Download, Printer, Star, MapPin, Clock, Quote, User, Loader2, FileText } from 'lucide-react';
