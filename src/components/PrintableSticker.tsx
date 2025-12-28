@@ -66,29 +66,98 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
 
   // Get top reviews (up to 2)
   const topReviews = business.reviews?.slice(0, 2) || [];
-
+  const getProxyUrl = useCallback((src: string) => {
+    const base = import.meta.env.VITE_SUPABASE_URL;
+    return `${base}/functions/v1/image-proxy?url=${encodeURIComponent(src)}`;
+  }, []);
 
   const renderStickerWebp = useCallback(async () => {
     if (!stickerRef.current) return null;
 
-    const scale = 3;
-    const rect = stickerRef.current.getBoundingClientRect();
+    const srcRect = stickerRef.current.getBoundingClientRect();
 
-    // Capture directly without cloning
-    const pngDataUrl = await domtoimage.toPng(stickerRef.current, {
-      cacheBust: true,
-      bgcolor: '#ffffff',
-      width: Math.round(rect.width * scale),
-      height: Math.round(rect.height * scale),
-      style: {
-        transform: `scale(${scale})`,
-        transformOrigin: 'top left',
-      },
-    } as any);
+    // Temporarily disable Google Fonts stylesheet links to avoid cssRules SecurityError
+    const fontLinks = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')).filter((l) =>
+      l.href?.includes('fonts.googleapis.com'),
+    );
+    const prevDisabled = fontLinks.map((l) => l.disabled);
+    fontLinks.forEach((l) => (l.disabled = true));
 
-    // Convert to WebP
-    return convertDataUrlToWebp(pngDataUrl, 0.92);
-  }, []);
+    const baseW = Math.max(1, Math.round(srcRect.width));
+    const baseH = Math.max(1, Math.round(srcRect.height));
+
+    // Clone sticker for capture (avoids mutating what the user sees)
+    const clone = stickerRef.current.cloneNode(true) as HTMLElement;
+    clone.removeAttribute('id');
+    clone.style.width = `${baseW}px`;
+    clone.style.height = `${baseH}px`;
+    clone.style.background = '#ffffff';
+
+    // Remove runtime <style> blocks from the clone
+    Array.from(clone.querySelectorAll('style')).forEach((s) => s.remove());
+
+    // Proxy external images to avoid CORS-taint (otherwise images disappear)
+    const imgs = Array.from(clone.querySelectorAll<HTMLImageElement>('img'));
+    imgs.forEach((img) => {
+      const src = img.getAttribute('src') || '';
+      if (/^https?:\/\//.test(src) && !src.startsWith(window.location.origin)) {
+        img.setAttribute('src', getProxyUrl(src));
+      }
+    });
+
+    // Put clone offscreen
+    const stage = document.createElement('div');
+    stage.style.position = 'fixed';
+    stage.style.left = '-10000px';
+    stage.style.top = '0';
+    stage.style.zIndex = '-1';
+    stage.style.background = '#ffffff';
+    stage.style.display = 'inline-block';
+    stage.style.width = `${baseW}px`;
+    stage.style.height = `${baseH}px`;
+    stage.appendChild(clone);
+    document.body.appendChild(stage);
+
+    try {
+      // Wait a moment for proxied images to settle
+      await Promise.race([
+        Promise.all(
+          imgs.map(
+            (img) =>
+              new Promise<void>((resolve) => {
+                if (img.complete) return resolve();
+                img.onload = () => resolve();
+                img.onerror = () => resolve();
+              }),
+          ),
+        ).then(() => undefined),
+        new Promise<void>((resolve) => setTimeout(resolve, 2000)),
+      ]);
+
+      const scale = 3;
+      const pngDataUrl = await domtoimage.toPng(clone, {
+        cacheBust: true,
+        bgcolor: '#ffffff',
+        width: Math.max(1, Math.round(baseW * scale)),
+        height: Math.max(1, Math.round(baseH * scale)),
+        style: {
+          transform: `scale(${scale})`,
+          transformOrigin: 'top left',
+          width: `${baseW}px`,
+          height: `${baseH}px`,
+          // Kill any accidental outlines/borders in capture without changing the real UI
+          outline: 'none',
+          border: 'none',
+          boxShadow: 'none',
+        },
+      } as any);
+
+      return convertDataUrlToWebp(pngDataUrl, 0.92);
+    } finally {
+      document.body.removeChild(stage);
+      fontLinks.forEach((l, i) => (l.disabled = prevDisabled[i]));
+    }
+  }, [getProxyUrl]);
 
   const handleDownload = useCallback(async () => {
     if (!stickerRef.current) return;
