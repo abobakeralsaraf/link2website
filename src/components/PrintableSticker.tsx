@@ -4,6 +4,7 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import type { BusinessData, PaymentMethod } from '@/lib/types';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useAdminWhatsApp } from '@/hooks/useAdminWhatsApp';
 import { Button } from '@/components/ui/button';
 import { Download, Printer, Star, Quote, User, Loader2, FileText, CreditCard, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
@@ -227,6 +228,7 @@ async function imageToBase64(url: string): Promise<string> {
 
 export function PrintableSticker({ business, paymentMethods = [] }: PrintableStickerProps) {
   const { language } = useLanguage();
+  const { adminWhatsApp, loading: adminLoading } = useAdminWhatsApp();
   const stickerRef = useRef<HTMLDivElement>(null);
   const actionLockRef = useRef<null | 'download' | 'print' | 'pdf'>(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -299,7 +301,8 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
     ? `https://search.google.com/local/writereview?placeid=${business.placeId}`
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(business.address)}`;
 
-  const whatsappNumber = '201514167733';
+  // Use admin WhatsApp number, removing + for wa.me URL format
+  const whatsappNumber = adminWhatsApp ? adminWhatsApp.replace(/^\+/, '') : '201514167733';
   const whatsappUrl = `https://wa.me/${whatsappNumber}`;
 
   const heroImage = business.photos?.[0];
@@ -927,7 +930,7 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
                     {language === 'ar' ? 'تواصل واتساب' : 'WhatsApp us'}
                   </p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
-                    <span dir="ltr" style={{ unicodeBidi: 'embed' }}>+20 151 416 7733</span>
+                    <span dir="ltr" style={{ unicodeBidi: 'embed' }}>{adminWhatsApp || '+20 151 416 7733'}</span>
                   </p>
                 </div>
                 <QRCodeImage value={whatsappUrl} size={PROMO_QR_SIZE} />
