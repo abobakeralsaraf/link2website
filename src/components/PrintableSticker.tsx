@@ -8,58 +8,82 @@ import { Button } from '@/components/ui/button';
 import { Download, Printer, Star, MapPin, Clock, Quote, User, Loader2, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 
-// QR Code component that renders as an image for PDF compatibility
+// Negative keyword blacklist for review filtering
+const NEGATIVE_KEYWORDS = [
+  'old', 'dirty', 'bad', 'slow', 'expensive', 'noisy', 'terrible', 'awful', 'worst', 'horrible',
+  'قديم', 'سيء', 'وسخ', 'غالي', 'زحمة', 'إزعاج', 'سيئ', 'قذر', 'بطيء'
+];
+
+// Filter reviews: only 5-star, no negative keywords
+function filterBestReviews(reviews: BusinessData['reviews'], language: string): BusinessData['reviews'] {
+  if (!reviews || reviews.length === 0) return [];
+  
+  const filtered = reviews.filter(review => {
+    // Only 5-star reviews
+    if (review.rating !== 5) return false;
+    
+    // Check for negative keywords
+    const text = (language === 'ar' && review.textAr ? review.textAr : review.text).toLowerCase();
+    const hasNegative = NEGATIVE_KEYWORDS.some(keyword => text.includes(keyword.toLowerCase()));
+    if (hasNegative) return false;
+    
+    return true;
+  });
+  
+  return filtered.slice(0, 2);
+}
+
+// QR Code component that renders as a Base64 image for PDF compatibility
 function QRCodeImage({ value, size, className }: { value: string; size: number; className?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [imgSrc, setImgSrc] = useState<string>('');
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // Convert canvas to data URL after render
+    // Convert canvas to data URL after render with sufficient delay
     const timer = setTimeout(() => {
       if (canvasRef.current) {
         try {
           const dataUrl = canvasRef.current.toDataURL('image/png');
           setImgSrc(dataUrl);
+          setIsReady(true);
         } catch (e) {
           console.error('QR conversion error:', e);
+          setIsReady(true);
         }
       }
-    }, 100);
+    }, 200);
     return () => clearTimeout(timer);
   }, [value, size]);
 
   return (
-    <div className={className} style={{ width: size, height: size }}>
-      {/* Hidden canvas for QR generation */}
-      <div style={{ position: 'absolute', left: -9999, top: 0 }}>
+    <div className={className} style={{ width: size, height: size, position: 'relative' }}>
+      {/* Hidden canvas for QR generation - always render for data extraction */}
+      <div style={{ position: 'absolute', left: -9999, top: 0, opacity: 0, pointerEvents: 'none' }}>
         <QRCodeCanvas
           ref={canvasRef}
           value={value}
-          size={size * 2}
+          size={size * 3}
           level="H"
           includeMargin={false}
           bgColor="#ffffff"
           fgColor="#000000"
         />
       </div>
-      {/* Visible image for PDF capture */}
-      {imgSrc ? (
+      {/* Visible Base64 image for reliable PDF capture */}
+      {imgSrc && isReady ? (
         <img 
           src={imgSrc} 
           alt="QR Code" 
           width={size} 
           height={size}
-          style={{ display: 'block', width: size, height: size }}
+          crossOrigin="anonymous"
+          style={{ display: 'block', width: size, height: size, imageRendering: 'crisp-edges' }}
         />
       ) : (
-        <QRCodeCanvas
-          value={value}
-          size={size}
-          level="H"
-          includeMargin={false}
-          bgColor="#ffffff"
-          fgColor="#000000"
-        />
+        <div style={{ width: size, height: size, background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <span style={{ fontSize: 10, color: '#999' }}>...</span>
+        </div>
       )}
     </div>
   );
@@ -114,7 +138,9 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
 
   const heroImage = business.photos?.[0];
   const displayPhotos = business.photos?.slice(1, 4) || [];
-  const topReviews = business.reviews?.slice(0, 2) || [];
+  // Smart review filtering: 5-star only, no negative keywords
+  const filteredReviews = filterBestReviews(business.reviews, language);
+  const topReviews = filteredReviews.length > 0 ? filteredReviews : [];
 
   const getProxyUrl = useCallback((src: string) => {
     const base = import.meta.env.VITE_SUPABASE_URL;
@@ -207,6 +233,9 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
     setIsGeneratingPdf(true);
 
     try {
+      // Wait 500ms to ensure QR codes are fully rendered as Base64 images
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       const element = stickerRef.current;
       const baseW = element.offsetWidth;
       const baseH = element.offsetHeight;
@@ -265,13 +294,13 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
         new Promise<void>((resolve) => setTimeout(resolve, 6000)),
       ]);
 
-      // High-quality capture with scale 4
+      // High-quality capture with scale 4 and CORS settings for QR codes
       const canvas = await html2canvas(clone, {
         scale: 4,
         backgroundColor: '#ffffff',
         useCORS: true,
         allowTaint: true,
-        logging: false,
+        logging: true,
       });
 
       document.body.removeChild(stage);
@@ -548,7 +577,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
           )}
           
           {/* Customer Reviews Section */}
-          {topReviews.length > 0 && (
+          {topReviews.length > 0 ? (
             <div className="px-4 py-2 space-y-2 bg-white">
               {topReviews.map((review, index) => (
                 <div key={index} className="relative bg-gray-50/50 rounded-lg p-3">
@@ -583,6 +612,14 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
                 </div>
               ))}
             </div>
+          ) : (
+            <div className="px-4 py-3 bg-white text-center">
+              <p className="text-sm text-muted-foreground italic">
+                {language === 'ar' 
+                  ? '✓ موثوق من آلاف العملاء السعداء'
+                  : '✓ Trusted by thousands of happy customers'}
+              </p>
+            </div>
           )}
           
           {/* Main Content - CTA */}
@@ -600,9 +637,21 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
               </p>
             </div>
             
+            {/* Google Maps Logo */}
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <svg width="20" height="20" viewBox="0 0 92.3 132.3" xmlns="http://www.w3.org/2000/svg">
+                <path fill="#1a73e8" d="M60.2 2.2C55.8.8 51 0 46.1 0 32 0 19.3 6.4 10.8 16.5l21.8 18.3L60.2 2.2z"/>
+                <path fill="#ea4335" d="M10.8 16.5C4.1 24.5 0 34.9 0 46.1c0 8.7 1.7 15.7 4.6 22l28-33.3-21.8-18.3z"/>
+                <path fill="#4285f4" d="M46.1 28.5c9.8 0 17.7 7.9 17.7 17.7 0 4.3-1.6 8.3-4.2 11.4 0 0 13.9-16.6 27.5-32.7-5.6-10.8-15.3-19-27-22.7L32.6 34.8c3.3-3.8 8.1-6.3 13.5-6.3z"/>
+                <path fill="#fbbc04" d="M46.1 63.5c-9.8 0-17.7-7.9-17.7-17.7 0-4.3 1.5-8.3 4.1-11.3l-28 33.3c4.8 10.6 12.8 19.2 21 29.9l34.1-40.5c-3.3 3.9-8.1 6.3-13.5 6.3z"/>
+                <path fill="#34a853" d="M59.2 109.2c19.4-26.7 33.1-41.2 33.1-63.1 0-8.3-2-16.2-5.6-23.2L25.5 97.6c4.7 6.2 9.1 12.6 11.9 20.3 4.9 13.5 8.7 14.4 8.7 14.4s3.9-.9 8.7-14.4c.6-1.8 1.5-3.6 2.5-5.4l1.9-3.3z"/>
+              </svg>
+              <span className="text-sm font-bold text-foreground">Google Maps</span>
+            </div>
+            
             {/* QR Code */}
-            <div className="py-3">
-              <div className="inline-block p-2 bg-white">
+            <div className="py-2">
+              <div className="inline-block p-2 bg-white rounded-lg shadow-sm">
                 <QRCodeImage value={reviewUrl} size={100} />
               </div>
               <p className="mt-1.5 text-xs font-semibold text-primary">
@@ -610,26 +659,6 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
                   ? 'امسح للتقييم على جوجل' 
                   : 'Scan to rate on Google'}
               </p>
-            </div>
-            
-            {/* Business Info */}
-            <div className="flex items-center justify-center gap-3 text-[10px] text-muted-foreground">
-              {business.address && (
-                <div className="flex items-center gap-1">
-                  <MapPin className="w-2.5 h-2.5" />
-                  <span className="truncate max-w-[120px]">{business.address.split(',')[0]}</span>
-                </div>
-              )}
-              {business.isOpen !== undefined && (
-                <div className="flex items-center gap-1">
-                  <Clock className="w-2.5 h-2.5" />
-                  <span className={business.isOpen ? 'text-green-600' : 'text-red-500'}>
-                    {business.isOpen 
-                      ? (language === 'ar' ? 'مفتوح' : 'Open')
-                      : (language === 'ar' ? 'مغلق' : 'Closed')}
-                  </span>
-                </div>
-              )}
             </div>
           </div>
           
