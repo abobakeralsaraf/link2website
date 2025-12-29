@@ -65,6 +65,30 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_method_types: {
+        Row: {
+          created_at: string
+          icon_url: string
+          id: string
+          name: string
+          name_ar: string
+        }
+        Insert: {
+          created_at?: string
+          icon_url: string
+          id?: string
+          name: string
+          name_ar: string
+        }
+        Update: {
+          created_at?: string
+          icon_url?: string
+          id?: string
+          name?: string
+          name_ar?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
