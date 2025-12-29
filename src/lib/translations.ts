@@ -221,6 +221,19 @@ export const translations = {
     // Premium Footer
     allRightsReserved: 'All rights reserved',
     madeWith: 'Made with',
+    
+    // Payment Methods
+    paymentMethods: 'Payment Methods (Optional)',
+    paymentMethodName: 'Payment Method Name',
+    paymentMethodPlaceholder: 'e.g., InstaPay, Bank Transfer',
+    accountOwnerName: 'Account Owner Name',
+    accountOwnerPlaceholder: 'e.g., Ahmed Mohamed',
+    accountNumber: 'Account Number / IBAN',
+    accountNumberPlaceholder: 'Enter account number or IBAN',
+    paymentLink: 'Payment Link',
+    paymentLinkPlaceholder: 'https://pay.example.com/...',
+    addAnotherPayment: 'Add Another Payment Method',
+    removePayment: 'Remove',
     by: 'by',
   },
   ar: {
@@ -444,6 +457,19 @@ export const translations = {
     allRightsReserved: 'جميع الحقوق محفوظة',
     madeWith: 'صنع بـ',
     by: 'بواسطة',
+    
+    // Payment Methods
+    paymentMethods: 'وسائل الدفع (اختياري)',
+    paymentMethodName: 'وسيلة الدفع',
+    paymentMethodPlaceholder: 'مثال: انستا باي، تحويل بنكي',
+    accountOwnerName: 'اسم صاحب الحساب',
+    accountOwnerPlaceholder: 'مثال: أحمد محمد',
+    accountNumber: 'رقم الحساب / IBAN',
+    accountNumberPlaceholder: 'أدخل رقم الحساب أو IBAN',
+    paymentLink: 'رابط الدفع',
+    paymentLinkPlaceholder: 'https://pay.example.com/...',
+    addAnotherPayment: 'إضافة وسيلة دفع أخرى',
+    removePayment: 'إزالة',
   },
 } as const;
 

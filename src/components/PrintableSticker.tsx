@@ -2,11 +2,9 @@ import { useRef, useCallback, useState, useEffect } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import type { BusinessData } from '@/lib/types';
+import type { BusinessData, PaymentMethod } from '@/lib/types';
 import { useLanguage } from '@/hooks/useLanguage';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Download, Printer, Star, MapPin, Clock, Quote, User, Loader2, FileText, Wallet, CreditCard, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -91,16 +89,9 @@ function QRCodeImage({ value, size, className }: { value: string; size: number; 
   );
 }
 
-// Payment Details Type
-type PaymentDetails = {
-  methodName: string;
-  accountName: string;
-  accountNumber: string;
-  paymentLink: string;
-};
-
-type PrintableStickerProps = {
+export type PrintableStickerProps = {
   business: BusinessData;
+  paymentMethods?: PaymentMethod[];
 };
 
 function dataUrlToBlob(dataUrl: string): Promise<Blob> {
@@ -129,7 +120,7 @@ async function convertDataUrlToWebp(dataUrl: string, quality = 0.92): Promise<st
   return dataUrl;
 }
 
-export function PrintableSticker({ business }: PrintableStickerProps) {
+export function PrintableSticker({ business, paymentMethods = [] }: PrintableStickerProps) {
   const { language } = useLanguage();
   const stickerRef = useRef<HTMLDivElement>(null);
   const actionLockRef = useRef<null | 'download' | 'print' | 'pdf'>(null);
@@ -137,18 +128,15 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
   const [isPrinting, setIsPrinting] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   
-  // Payment Details State
-  const [paymentDetails, setPaymentDetails] = useState<PaymentDetails>({
-    methodName: '',
-    accountName: '',
-    accountNumber: '',
-    paymentLink: '',
-  });
+  // Check if any payment details were provided
+  const hasPaymentDetails = paymentMethods.some(p => 
+    p.methodName.trim() || p.accountOwner.trim() || p.accountNumber.trim() || p.paymentLink.trim()
+  );
   
-  const hasPaymentDetails = paymentDetails.methodName.trim() || 
-                            paymentDetails.accountName.trim() || 
-                            paymentDetails.accountNumber.trim() ||
-                            paymentDetails.paymentLink.trim();
+  // Get first valid payment method for display
+  const primaryPayment = paymentMethods.find(p => 
+    p.methodName.trim() || p.accountOwner.trim() || p.accountNumber.trim() || p.paymentLink.trim()
+  );
 
   const name = language === 'ar' && business.nameAr ? business.nameAr : business.name;
 
@@ -526,61 +514,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
       </div>
       
       {/* Payment Details Input (Optional) */}
-      <div className="bg-muted/30 rounded-lg p-4 max-w-md mx-auto print:hidden">
-        <div className="flex items-center gap-2 mb-3">
-          <Wallet className="w-4 h-4 text-primary" />
-          <h3 className="text-sm font-semibold">
-            {language === 'ar' ? 'تفاصيل الدفع (اختياري)' : 'Payment Details (Optional)'}
-          </h3>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">
-              {language === 'ar' ? 'طريقة الدفع' : 'Payment Method'}
-            </Label>
-            <Input
-              placeholder={language === 'ar' ? 'مثال: InstaPay' : 'e.g., InstaPay'}
-              value={paymentDetails.methodName}
-              onChange={(e) => setPaymentDetails(prev => ({ ...prev, methodName: e.target.value }))}
-              className="h-8 text-sm"
-            />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">
-              {language === 'ar' ? 'اسم الحساب' : 'Account Name'}
-            </Label>
-            <Input
-              placeholder={language === 'ar' ? 'مثال: أحمد محمد' : 'e.g., Ahmed Mohamed'}
-              value={paymentDetails.accountName}
-              onChange={(e) => setPaymentDetails(prev => ({ ...prev, accountName: e.target.value }))}
-              className="h-8 text-sm"
-            />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">
-              {language === 'ar' ? 'رقم الحساب / IBAN' : 'Account Number / IBAN'}
-            </Label>
-            <Input
-              placeholder={language === 'ar' ? 'رقم الحساب' : 'Account number'}
-              value={paymentDetails.accountNumber}
-              onChange={(e) => setPaymentDetails(prev => ({ ...prev, accountNumber: e.target.value }))}
-              className="h-8 text-sm"
-            />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">
-              {language === 'ar' ? 'رابط الدفع' : 'Payment Link'}
-            </Label>
-            <Input
-              placeholder="https://..."
-              value={paymentDetails.paymentLink}
-              onChange={(e) => setPaymentDetails(prev => ({ ...prev, paymentLink: e.target.value }))}
-              className="h-8 text-sm"
-            />
-          </div>
-        </div>
-      </div>
-      
+      {/* Payment input moved to InputSection - removed from here */}
       {/* Printable Sticker - Seamless poster design */}
       <div className="flex justify-center">
         <div
@@ -709,30 +643,30 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
             </div>
             
             {/* Conditional Layout: 2-Column if payment details exist, else centered */}
-            {hasPaymentDetails ? (
+            {hasPaymentDetails && primaryPayment ? (
               <div className="grid grid-cols-2 gap-3">
                 {/* Left: Payment Details */}
                 <div className="text-center border-e border-border/50 pe-3">
                   <div className="flex items-center justify-center gap-1.5 mb-2">
                     <CreditCard className="w-4 h-4 text-primary" />
                     <span className="text-xs font-bold text-foreground">
-                      {paymentDetails.methodName || (language === 'ar' ? 'الدفع' : 'Payment')}
+                      {primaryPayment.methodName || (language === 'ar' ? 'الدفع' : 'Payment')}
                     </span>
                   </div>
-                  {paymentDetails.accountName && (
+                  {primaryPayment.accountOwner && (
                     <p className="text-[10px] text-muted-foreground">
-                      {paymentDetails.accountName}
+                      {primaryPayment.accountOwner}
                     </p>
                   )}
-                  {paymentDetails.accountNumber && (
+                  {primaryPayment.accountNumber && (
                     <p className="text-[10px] font-mono text-foreground mt-0.5">
-                      <span dir="ltr" style={{ unicodeBidi: 'embed' }}>{paymentDetails.accountNumber}</span>
+                      <span dir="ltr" style={{ unicodeBidi: 'embed' }}>{primaryPayment.accountNumber}</span>
                     </p>
                   )}
-                  {paymentDetails.paymentLink && (
+                  {primaryPayment.paymentLink && (
                     <div className="mt-2">
                       <div className="inline-block p-1.5 bg-white rounded shadow-sm">
-                        <QRCodeImage value={paymentDetails.paymentLink} size={70} />
+                        <QRCodeImage value={primaryPayment.paymentLink} size={70} />
                       </div>
                       <p className="mt-1 text-[9px] text-primary font-semibold">
                         {language === 'ar' ? 'امسح للدفع' : 'Scan to pay'}

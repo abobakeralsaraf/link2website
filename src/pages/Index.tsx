@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLanguage } from '@/hooks/useLanguage';
-import { BusinessData } from '@/lib/types';
+import { BusinessData, PaymentMethod } from '@/lib/types';
 import { Header } from '@/components/Header';
 import { InputSection } from '@/components/InputSection';
 import { WebsitePreview } from '@/components/WebsitePreview';
@@ -13,12 +13,14 @@ import { supabase } from '@/integrations/supabase/client';
 const Index = () => {
   const { t } = useLanguage();
   const [business, setBusiness] = useState<BusinessData | null>(null);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleGenerate = async (input: string) => {
+  const handleGenerate = async (input: string, payments: PaymentMethod[]) => {
     setIsLoading(true);
     setBusiness(null);
+    setPaymentMethods([]);
     setError(null);
 
     try {
@@ -61,6 +63,7 @@ const Index = () => {
       }
 
       setBusiness(data.data);
+      setPaymentMethods(payments);
       toast.success(t('websiteGenerated'));
     } catch (err: any) {
       console.error('Error generating website:', err);
@@ -74,6 +77,7 @@ const Index = () => {
 
   const handleReset = () => {
     setBusiness(null);
+    setPaymentMethods([]);
     setError(null);
   };
 
@@ -130,7 +134,7 @@ const Index = () => {
                 ← {t('generateAnother')}
               </button>
             </div>
-            <WebsitePreview business={business} />
+            <WebsitePreview business={business} paymentMethods={paymentMethods} />
           </div>
         )}
       </main>
