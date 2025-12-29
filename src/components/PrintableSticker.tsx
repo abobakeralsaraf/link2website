@@ -5,8 +5,9 @@ import { jsPDF } from 'jspdf';
 import type { BusinessData, PaymentMethod } from '@/lib/types';
 import { useLanguage } from '@/hooks/useLanguage';
 import { Button } from '@/components/ui/button';
-import { Download, Printer, Star, MapPin, Clock, Quote, User, Loader2, FileText, Wallet, CreditCard, Building2 } from 'lucide-react';
+import { Download, Printer, Star, Quote, User, Loader2, FileText, CreditCard, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 // Negative keyword blacklist for review filtering
 const NEGATIVE_KEYWORDS = [
@@ -89,9 +90,83 @@ function QRCodeImage({ value, size, className }: { value: string; size: number; 
   );
 }
 
+// Component to convert external image URL to Base64 for PDF export
+function Base64Image({ 
+  src, 
+  alt, 
+  width, 
+  height, 
+  className,
+  fallback 
+}: { 
+  src: string; 
+  alt: string; 
+  width: number; 
+  height: number; 
+  className?: string;
+  fallback?: React.ReactNode;
+}) {
+  const [imgSrc, setImgSrc] = useState<string>(src);
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    // Convert to Base64 for PDF compatibility
+    const convertToBase64 = async () => {
+      try {
+        // Use proxy for external images
+        const base = import.meta.env.VITE_SUPABASE_URL;
+        const proxyUrl = `${base}/functions/v1/image-proxy?url=${encodeURIComponent(src)}`;
+        
+        const response = await fetch(proxyUrl);
+        const blob = await response.blob();
+        
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (typeof reader.result === 'string') {
+            setImgSrc(reader.result);
+          }
+        };
+        reader.readAsDataURL(blob);
+      } catch (error) {
+        console.error('Failed to convert image to Base64:', error);
+        setHasError(true);
+      }
+    };
+
+    // Only convert if it's an external URL (not already Base64 or local)
+    if (src && src.startsWith('http') && !src.includes('data:')) {
+      convertToBase64();
+    }
+  }, [src]);
+
+  if (hasError && fallback) {
+    return <>{fallback}</>;
+  }
+
+  return (
+    <img
+      src={imgSrc}
+      alt={alt}
+      width={width}
+      height={height}
+      className={className}
+      crossOrigin="anonymous"
+      onError={() => setHasError(true)}
+      style={{ display: 'block' }}
+    />
+  );
+}
+
 export type PrintableStickerProps = {
   business: BusinessData;
   paymentMethods?: PaymentMethod[];
+};
+
+type PaymentMethodType = {
+  id: string;
+  name: string;
+  name_ar: string;
+  icon_url: string;
 };
 
 function dataUrlToBlob(dataUrl: string): Promise<Blob> {
@@ -120,6 +195,36 @@ async function convertDataUrlToWebp(dataUrl: string, quality = 0.92): Promise<st
   return dataUrl;
 }
 
+// Convert image URL to Base64 for PDF export
+async function imageToBase64(url: string): Promise<string> {
+  try {
+    const base = import.meta.env.VITE_SUPABASE_URL;
+    // Use image proxy for external URLs
+    const fetchUrl = url.startsWith('http') 
+      ? `${base}/functions/v1/image-proxy?url=${encodeURIComponent(url)}`
+      : url;
+    
+    const response = await fetch(fetchUrl);
+    const blob = await response.blob();
+    
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          resolve(reader.result);
+        } else {
+          reject(new Error('Failed to convert to Base64'));
+        }
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error('imageToBase64 error:', error);
+    return url; // Return original URL as fallback
+  }
+}
+
 export function PrintableSticker({ business, paymentMethods = [] }: PrintableStickerProps) {
   const { language } = useLanguage();
   const stickerRef = useRef<HTMLDivElement>(null);
@@ -127,6 +232,44 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
   const [isDownloading, setIsDownloading] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [paymentMethodTypes, setPaymentMethodTypes] = useState<PaymentMethodType[]>([]);
+  const [iconBase64Map, setIconBase64Map] = useState<Record<string, string>>({});
+  
+  // Fetch payment method types from database
+  useEffect(() => {
+    const fetchPaymentMethods = async () => {
+      const { data, error } = await supabase
+        .from('payment_method_types')
+        .select('*')
+        .order('name', { ascending: true });
+      
+      if (!error && data) {
+        setPaymentMethodTypes(data);
+        
+        // Pre-convert icons to Base64 for PDF export
+        const base64Map: Record<string, string> = {};
+        for (const method of data) {
+          if (method.icon_url) {
+            try {
+              // For local paths, we can use them directly
+              if (method.icon_url.startsWith('/')) {
+                base64Map[method.id] = method.icon_url;
+              } else {
+                const base64 = await imageToBase64(method.icon_url);
+                base64Map[method.id] = base64;
+              }
+            } catch (e) {
+              console.error('Failed to convert icon:', e);
+              base64Map[method.id] = method.icon_url;
+            }
+          }
+        }
+        setIconBase64Map(base64Map);
+      }
+    };
+    
+    fetchPaymentMethods();
+  }, []);
   
   // Check if any payment details were provided
   const hasPaymentDetails = paymentMethods.some(p => 
@@ -137,6 +280,18 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
   const primaryPayment = paymentMethods.find(p => 
     p.methodName.trim() || p.accountOwner.trim() || p.accountNumber.trim() || p.paymentLink.trim()
   );
+  
+  // Find matching payment method type for icon
+  const getPaymentMethodIcon = (methodName: string): string | null => {
+    const method = paymentMethodTypes.find(m => 
+      m.name.toLowerCase() === methodName.toLowerCase() || 
+      m.name_ar === methodName
+    );
+    if (method) {
+      return iconBase64Map[method.id] || method.icon_url;
+    }
+    return null;
+  };
 
   const name = language === 'ar' && business.nameAr ? business.nameAr : business.name;
 
@@ -149,7 +304,7 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
 
   const heroImage = business.photos?.[0];
   const displayPhotos = business.photos?.slice(1, 4) || [];
-  // Smart review filtering: 5-star only, no negative keywords
+  // Smart review filtering: 4-5 star only, no negative keywords
   const filteredReviews = filterBestReviews(business.reviews, language);
   const topReviews = filteredReviews.length > 0 ? filteredReviews : [];
 
@@ -316,10 +471,10 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
 
       document.body.removeChild(stage);
 
-      // Create PDF with 1:2 aspect ratio (width:height)
-      // Using mm units, 100mm x 200mm (suitable for 40cm x 80cm when scaled)
+      // Create PDF with 5:9 aspect ratio (width:height)
+      // Using mm units, 100mm x 180mm (50cm x 90cm scaled)
       const pdfWidth = 100;
-      const pdfHeight = 200;
+      const pdfHeight = 180;
       
       const pdf = new jsPDF({
         orientation: 'portrait',
@@ -464,6 +619,10 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
     return stars;
   };
 
+  // QR sizes as constants for visual balance
+  const MAIN_QR_SIZE = 130;
+  const PROMO_QR_SIZE = 80;
+
   return (
     <div className="space-y-6">
       {/* Control Buttons */}
@@ -513,20 +672,21 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
         </Button>
       </div>
       
-      {/* Payment Details Input (Optional) */}
-      {/* Payment input moved to InputSection - removed from here */}
-      {/* Printable Sticker - Seamless poster design */}
+      {/* Printable Sticker - 5:9 aspect ratio (wider layout) */}
       <div className="flex justify-center">
         <div
           ref={stickerRef}
           id="printable-sticker"
-          className="w-[400px] bg-white overflow-hidden"
-          style={{ fontFamily: language === 'ar' ? 'Tajawal, sans-serif' : 'Inter, sans-serif' }}
+          className="w-[500px] bg-white overflow-hidden"
+          style={{ 
+            fontFamily: language === 'ar' ? 'Tajawal, sans-serif' : 'Inter, sans-serif',
+            aspectRatio: '5/9'
+          }}
           dir={language === 'ar' ? 'rtl' : 'ltr'}
         >
           {/* Hero Image Header */}
           {heroImage ? (
-            <div className="relative h-40 overflow-hidden">
+            <div className="relative h-48 overflow-hidden">
               <img 
                 src={heroImage} 
                 alt={name}
@@ -535,36 +695,36 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
                 className="block w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-              <div className="absolute bottom-0 left-0 right-0 p-4 text-white text-center">
-                <h1 className="text-xl font-bold drop-shadow-lg">{name}</h1>
+              <div className="absolute bottom-0 left-0 right-0 p-5 text-white text-center">
+                <h1 className="text-2xl font-bold drop-shadow-lg">{name}</h1>
                 {business.types?.[0] && (
-                  <p className="text-sm opacity-90">{business.types[0]}</p>
+                  <p className="text-base opacity-90 mt-1">{business.types[0]}</p>
                 )}
               </div>
             </div>
           ) : (
-            <div className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-primary-foreground p-6 text-center">
-              <div className="w-16 h-16 mx-auto mb-3 bg-white/20 rounded-full flex items-center justify-center">
-                <span className="text-3xl font-bold">{name.charAt(0)}</span>
+            <div className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-primary-foreground p-8 text-center">
+              <div className="w-20 h-20 mx-auto mb-4 bg-white/20 rounded-full flex items-center justify-center">
+                <span className="text-4xl font-bold">{name.charAt(0)}</span>
               </div>
-              <h1 className="text-xl font-bold mb-1">{name}</h1>
+              <h1 className="text-2xl font-bold mb-1">{name}</h1>
             </div>
           )}
           
           {/* Rating Section */}
           {business.rating && (
-            <div className="bg-white px-4 pt-4 pb-2">
-              <div className="flex items-center justify-center gap-3">
+            <div className="bg-white px-5 pt-5 pb-3">
+              <div className="flex items-center justify-center gap-4">
                 <div className="flex items-center gap-1">
                   {renderStars(business.rating)}
                 </div>
                 <div className="text-center">
-                  <span className="text-2xl font-bold text-primary">{business.rating}</span>
-                  <span className="text-sm text-muted-foreground mx-1">/</span>
-                  <span className="text-sm text-muted-foreground">5</span>
+                  <span className="text-3xl font-bold text-primary">{business.rating}</span>
+                  <span className="text-base text-muted-foreground mx-1">/</span>
+                  <span className="text-base text-muted-foreground">5</span>
                 </div>
               </div>
-              <p className="text-center text-sm text-muted-foreground mt-1">
+              <p className="text-center text-sm text-muted-foreground mt-2">
                 {language === 'ar' 
                   ? `${business.totalReviews} تقييم من العملاء`
                   : `${business.totalReviews} customer reviews`}
@@ -574,9 +734,9 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
           
           {/* Photo Gallery Strip */}
           {displayPhotos.length > 0 && (
-            <div className="flex gap-1 px-4 py-2 bg-white">
+            <div className="flex gap-2 px-5 py-3 bg-white">
               {displayPhotos.map((photo, index) => (
-                <div key={index} className="flex-1 h-20 overflow-hidden rounded-sm">
+                <div key={index} className="flex-1 h-24 overflow-hidden rounded">
                   <img 
                     src={photo} 
                     alt={`${name} ${index + 1}`}
@@ -591,35 +751,35 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
           
           {/* Customer Reviews Section - Hidden if no reviews pass filter */}
           {topReviews.length > 0 && (
-            <div className="px-4 py-2 space-y-2 bg-white">
+            <div className="px-5 py-3 space-y-3 bg-white">
               {topReviews.map((review, index) => (
-                <div key={index} className="relative bg-gray-50/50 rounded-lg p-3">
-                  <Quote className="absolute top-2 right-2 w-4 h-4 text-primary/20" />
-                  <div className="flex items-center gap-2 mb-1">
+                <div key={index} className="relative bg-gray-50/50 rounded-lg p-4">
+                  <Quote className="absolute top-3 right-3 w-5 h-5 text-primary/20" />
+                  <div className="flex items-center gap-3 mb-2">
                     {review.authorPhoto ? (
                       <img
                         src={review.authorPhoto}
                         alt={review.authorName}
                         crossOrigin="anonymous"
                         referrerPolicy="no-referrer"
-                        className="block w-6 h-6 rounded-full object-cover"
+                        className="block w-8 h-8 rounded-full object-cover"
                       />
                     ) : (
-                      <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
-                        <User className="w-3 h-3 text-primary" />
+                      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                        <User className="w-4 h-4 text-primary" />
                       </div>
                     )}
-                    <span className="text-xs font-semibold text-foreground">{review.authorName}</span>
+                    <span className="text-sm font-semibold text-foreground">{review.authorName}</span>
                     <div className="flex items-center gap-0.5 ms-auto">
                       {[...Array(5)].map((_, i) => (
                         <Star
                           key={i}
-                          className={`w-3 h-3 ${i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/30'}`}
+                          className={`w-4 h-4 ${i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/30'}`}
                         />
                       ))}
                     </div>
                   </div>
-                  <p className="text-[10px] text-muted-foreground leading-relaxed" style={{ height: 'auto', overflow: 'visible' }}>
+                  <p className="text-xs text-muted-foreground leading-relaxed" style={{ height: 'auto', overflow: 'visible' }}>
                     {language === 'ar' && review.textAr ? review.textAr : review.text}
                   </p>
                 </div>
@@ -628,9 +788,9 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
           )}
           
           {/* Main Content - Conditional Layout */}
-          <div className="px-4 py-4 bg-white">
-            <div className="text-center space-y-0.5 mb-3">
-              <p className="text-base font-bold text-foreground leading-relaxed">
+          <div className="px-5 py-5 bg-white">
+            <div className="text-center space-y-1 mb-4">
+              <p className="text-lg font-bold text-foreground leading-relaxed">
                 {language === 'ar' 
                   ? 'لأننا نثق في جودة خدماتنا' 
                   : 'Because we trust our service quality'}
@@ -644,31 +804,49 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
             
             {/* Conditional Layout: 2-Column if payment details exist, else centered */}
             {hasPaymentDetails && primaryPayment ? (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-4">
                 {/* Left: Payment Details */}
-                <div className="text-center border-e border-border/50 pe-3">
-                  <div className="flex items-center justify-center gap-1.5 mb-2">
-                    <CreditCard className="w-4 h-4 text-primary" />
-                    <span className="text-xs font-bold text-foreground">
+                <div className="text-center border-e border-border/50 pe-4 flex flex-col items-center">
+                  <div className="flex items-center justify-center gap-2 mb-3">
+                    {(() => {
+                      const iconUrl = getPaymentMethodIcon(primaryPayment.methodName);
+                      if (iconUrl) {
+                        return (
+                          <img 
+                            src={iconUrl} 
+                            alt={primaryPayment.methodName}
+                            className="w-6 h-6 object-contain"
+                            crossOrigin="anonymous"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                            }}
+                          />
+                        );
+                      }
+                      return <Wallet className="w-5 h-5 text-primary" />;
+                    })()}
+                    <Wallet className="w-5 h-5 text-primary hidden" />
+                    <span className="text-sm font-bold text-foreground">
                       {primaryPayment.methodName || (language === 'ar' ? 'الدفع' : 'Payment')}
                     </span>
                   </div>
                   {primaryPayment.accountOwner && (
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       {primaryPayment.accountOwner}
                     </p>
                   )}
                   {primaryPayment.accountNumber && (
-                    <p className="text-[10px] font-mono text-foreground mt-0.5">
+                    <p className="text-xs font-mono text-foreground mt-1">
                       <span dir="ltr" style={{ unicodeBidi: 'embed' }}>{primaryPayment.accountNumber}</span>
                     </p>
                   )}
                   {primaryPayment.paymentLink && (
-                    <div className="mt-2">
-                      <div className="inline-block p-1.5 bg-white rounded shadow-sm">
-                        <QRCodeImage value={primaryPayment.paymentLink} size={70} />
+                    <div className="mt-3 flex flex-col items-center">
+                      <div className="p-2 bg-white rounded-lg shadow-sm">
+                        <QRCodeImage value={primaryPayment.paymentLink} size={MAIN_QR_SIZE} />
                       </div>
-                      <p className="mt-1 text-[9px] text-primary font-semibold">
+                      <p className="mt-2 text-xs text-primary font-semibold">
                         {language === 'ar' ? 'امسح للدفع' : 'Scan to pay'}
                       </p>
                     </div>
@@ -676,46 +854,46 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
                 </div>
                 
                 {/* Right: Google Maps */}
-                <div className="text-center ps-3">
-                  <div className="flex items-center justify-center gap-1.5 mb-2">
-                    <svg width="16" height="16" viewBox="0 0 92.3 132.3" xmlns="http://www.w3.org/2000/svg">
+                <div className="text-center ps-4 flex flex-col items-center">
+                  <div className="flex items-center justify-center gap-2 mb-3">
+                    <svg width="20" height="20" viewBox="0 0 92.3 132.3" xmlns="http://www.w3.org/2000/svg">
                       <path fill="#1a73e8" d="M60.2 2.2C55.8.8 51 0 46.1 0 32 0 19.3 6.4 10.8 16.5l21.8 18.3L60.2 2.2z"/>
                       <path fill="#ea4335" d="M10.8 16.5C4.1 24.5 0 34.9 0 46.1c0 8.7 1.7 15.7 4.6 22l28-33.3-21.8-18.3z"/>
                       <path fill="#4285f4" d="M46.1 28.5c9.8 0 17.7 7.9 17.7 17.7 0 4.3-1.6 8.3-4.2 11.4 0 0 13.9-16.6 27.5-32.7-5.6-10.8-15.3-19-27-22.7L32.6 34.8c3.3-3.8 8.1-6.3 13.5-6.3z"/>
                       <path fill="#fbbc04" d="M46.1 63.5c-9.8 0-17.7-7.9-17.7-17.7 0-4.3 1.5-8.3 4.1-11.3l-28 33.3c4.8 10.6 12.8 19.2 21 29.9l34.1-40.5c-3.3 3.9-8.1 6.3-13.5 6.3z"/>
                       <path fill="#34a853" d="M59.2 109.2c19.4-26.7 33.1-41.2 33.1-63.1 0-8.3-2-16.2-5.6-23.2L25.5 97.6c4.7 6.2 9.1 12.6 11.9 20.3 4.9 13.5 8.7 14.4 8.7 14.4s3.9-.9 8.7-14.4c.6-1.8 1.5-3.6 2.5-5.4l1.9-3.3z"/>
                     </svg>
-                    <span className="text-xs font-bold text-foreground">Google Maps</span>
+                    <span className="text-sm font-bold text-foreground">Google Maps</span>
                   </div>
-                  <div className="inline-block p-1.5 bg-white rounded shadow-sm">
-                    <QRCodeImage value={reviewUrl} size={70} />
+                  <div className="p-2 bg-white rounded-lg shadow-sm">
+                    <QRCodeImage value={reviewUrl} size={MAIN_QR_SIZE} />
                   </div>
-                  <p className="mt-1 text-[9px] text-primary font-semibold">
+                  <p className="mt-2 text-xs text-primary font-semibold">
                     {language === 'ar' ? 'امسح للتقييم' : 'Scan to rate'}
                   </p>
                 </div>
               </div>
             ) : (
               /* Centered Layout (No payment details) */
-              <div className="text-center">
+              <div className="text-center flex flex-col items-center">
                 {/* Google Maps Logo */}
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  <svg width="20" height="20" viewBox="0 0 92.3 132.3" xmlns="http://www.w3.org/2000/svg">
+                <div className="flex items-center justify-center gap-2 mb-3">
+                  <svg width="24" height="24" viewBox="0 0 92.3 132.3" xmlns="http://www.w3.org/2000/svg">
                     <path fill="#1a73e8" d="M60.2 2.2C55.8.8 51 0 46.1 0 32 0 19.3 6.4 10.8 16.5l21.8 18.3L60.2 2.2z"/>
                     <path fill="#ea4335" d="M10.8 16.5C4.1 24.5 0 34.9 0 46.1c0 8.7 1.7 15.7 4.6 22l28-33.3-21.8-18.3z"/>
                     <path fill="#4285f4" d="M46.1 28.5c9.8 0 17.7 7.9 17.7 17.7 0 4.3-1.6 8.3-4.2 11.4 0 0 13.9-16.6 27.5-32.7-5.6-10.8-15.3-19-27-22.7L32.6 34.8c3.3-3.8 8.1-6.3 13.5-6.3z"/>
                     <path fill="#fbbc04" d="M46.1 63.5c-9.8 0-17.7-7.9-17.7-17.7 0-4.3 1.5-8.3 4.1-11.3l-28 33.3c4.8 10.6 12.8 19.2 21 29.9l34.1-40.5c-3.3 3.9-8.1 6.3-13.5 6.3z"/>
                     <path fill="#34a853" d="M59.2 109.2c19.4-26.7 33.1-41.2 33.1-63.1 0-8.3-2-16.2-5.6-23.2L25.5 97.6c4.7 6.2 9.1 12.6 11.9 20.3 4.9 13.5 8.7 14.4 8.7 14.4s3.9-.9 8.7-14.4c.6-1.8 1.5-3.6 2.5-5.4l1.9-3.3z"/>
                   </svg>
-                  <span className="text-sm font-bold text-foreground">Google Maps</span>
+                  <span className="text-base font-bold text-foreground">Google Maps</span>
                 </div>
                 
                 {/* QR Code */}
-                <div className="py-2">
-                  <div className="inline-block p-2 bg-white rounded-lg shadow-sm">
-                    <QRCodeImage value={reviewUrl} size={100} />
+                <div className="py-3">
+                  <div className="p-3 bg-white rounded-lg shadow-sm inline-block">
+                    <QRCodeImage value={reviewUrl} size={MAIN_QR_SIZE} />
                   </div>
-                  <p className="mt-1.5 text-xs font-semibold text-primary">
+                  <p className="mt-2 text-sm font-semibold text-primary">
                     {language === 'ar' 
                       ? 'امسح للتقييم على جوجل' 
                       : 'Scan to rate on Google'}
@@ -725,24 +903,24 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
             )}
           </div>
           
-          {/* Footer - Centered Promo Section */}
-          <div className="bg-gray-50 px-4 py-3">
+          {/* Footer - Smaller Promo QR */}
+          <div className="bg-gray-50 px-5 py-4">
             <div className="flex flex-col items-center justify-center text-center gap-2">
               <p className="text-xs text-muted-foreground font-medium">
                 {language === 'ar' 
                   ? 'لطلب استيكر كهذا' 
                   : 'To order a sticker like this'}
               </p>
-              <div className="flex items-center justify-center gap-3">
+              <div className="flex items-center justify-center gap-4">
                 <div className="text-xs">
                   <p className="font-bold text-foreground">
                     {language === 'ar' ? 'تواصل واتساب' : 'WhatsApp us'}
                   </p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
                     <span dir="ltr" style={{ unicodeBidi: 'embed' }}>+20 151 416 7733</span>
                   </p>
                 </div>
-                <QRCodeImage value={whatsappUrl} size={45} />
+                <QRCodeImage value={whatsappUrl} size={PROMO_QR_SIZE} />
               </div>
             </div>
           </div>
