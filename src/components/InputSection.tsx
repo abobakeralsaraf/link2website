@@ -78,14 +78,9 @@ export function InputSection({ onGenerate, isLoading }: InputSectionProps) {
     }
   };
 
-  const handleTryDemoWithPayment = () => {
+  const handleTryDemo = () => {
     setInput(DEMO_URL);
     onGenerate(DEMO_URL, DEMO_PAYMENT_METHODS);
-  };
-
-  const handleTryDemoWithoutPayment = () => {
-    setInput(DEMO_URL);
-    onGenerate(DEMO_URL, []);
   };
 
   const handlePaymentTypeSelect = (paymentId: string, typeId: string) => {
@@ -274,31 +269,17 @@ export function InputSection({ onGenerate, isLoading }: InputSectionProps) {
               )}
             </Button>
 
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                onClick={handleTryDemoWithPayment}
-                disabled={isLoading}
-                className="gap-2 flex-1 sm:flex-none"
-              >
-                <Zap className="h-5 w-5" />
-                <span className="text-sm">{t('tryDemoWithPayment')}</span>
-              </Button>
-
-              <Button
-                type="button"
-                variant="ghost"
-                size="lg"
-                onClick={handleTryDemoWithoutPayment}
-                disabled={isLoading}
-                className="gap-2 flex-1 sm:flex-none"
-              >
-                <Zap className="h-5 w-5" />
-                <span className="text-sm">{t('tryDemoWithoutPayment')}</span>
-              </Button>
-            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              onClick={handleTryDemo}
+              disabled={isLoading}
+              className="gap-2"
+            >
+              <Zap className="h-5 w-5" />
+              <span>{t('tryDemo')}</span>
+            </Button>
           </div>
         </form>
 

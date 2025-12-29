@@ -32,8 +32,7 @@ export const translations = {
     generating: 'Generating...',
     
     // Demo
-    tryDemoWithPayment: 'Demo with Payment',
-    tryDemoWithoutPayment: 'Demo without Payment',
+    tryDemo: 'Try Demo',
     demoDescription: 'See how it works with a sample business',
     selectPaymentMethod: 'Select payment method',
     
@@ -269,8 +268,7 @@ export const translations = {
     generating: 'جارٍ الإنشاء...',
     
     // Demo
-    tryDemoWithPayment: 'تجربة مع الدفع',
-    tryDemoWithoutPayment: 'تجربة بدون دفع',
+    tryDemo: 'جرب العرض',
     demoDescription: 'شاهد كيف يعمل مع عمل نموذجي',
     selectPaymentMethod: 'اختر وسيلة الدفع',
     
