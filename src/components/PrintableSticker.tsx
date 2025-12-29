@@ -804,8 +804,29 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
             {/* Conditional Layout: 2-Column if payment details exist, else centered */}
             {hasPaymentDetails && primaryPayment ? (
               <div className="grid grid-cols-2 gap-4">
-                {/* Left: Payment Details */}
+                {/* Left: Google Maps */}
                 <div className="text-center border-e border-border/50 pe-4 flex flex-col items-center">
+                  <div className="flex items-center justify-center gap-2 mb-3">
+                    <svg width="20" height="20" viewBox="0 0 92.3 132.3" xmlns="http://www.w3.org/2000/svg">
+                      <path fill="#1a73e8" d="M60.2 2.2C55.8.8 51 0 46.1 0 32 0 19.3 6.4 10.8 16.5l21.8 18.3L60.2 2.2z"/>
+                      <path fill="#ea4335" d="M10.8 16.5C4.1 24.5 0 34.9 0 46.1c0 8.7 1.7 15.7 4.6 22l28-33.3-21.8-18.3z"/>
+                      <path fill="#4285f4" d="M46.1 28.5c9.8 0 17.7 7.9 17.7 17.7 0 4.3-1.6 8.3-4.2 11.4 0 0 13.9-16.6 27.5-32.7-5.6-10.8-15.3-19-27-22.7L32.6 34.8c3.3-3.8 8.1-6.3 13.5-6.3z"/>
+                      <path fill="#fbbc04" d="M46.1 63.5c-9.8 0-17.7-7.9-17.7-17.7 0-4.3 1.5-8.3 4.1-11.3l-28 33.3c4.8 10.6 12.8 19.2 21 29.9l34.1-40.5c-3.3 3.9-8.1 6.3-13.5 6.3z"/>
+                      <path fill="#34a853" d="M59.2 109.2c19.4-26.7 33.1-41.2 33.1-63.1 0-8.3-2-16.2-5.6-23.2L25.5 97.6c4.7 6.2 9.1 12.6 11.9 20.3 4.9 13.5 8.7 14.4 8.7 14.4s3.9-.9 8.7-14.4c.6-1.8 1.5-3.6 2.5-5.4l1.9-3.3z"/>
+                    </svg>
+                    <span className="text-sm font-bold text-foreground">Google Maps</span>
+                  </div>
+                  <div className="p-2 bg-white rounded-lg shadow-sm">
+                    <QRCodeImage value={reviewUrl} size={MAIN_QR_SIZE} />
+                  </div>
+                  <p className="mt-2 text-xs text-primary font-semibold">
+                    {language === 'ar' ? 'امسح للتقييم' : 'Scan to rate'}
+                  </p>
+                </div>
+                
+                {/* Right: Payment Details - Same order as Google Maps */}
+                <div className="text-center ps-4 flex flex-col items-center">
+                  {/* 1. Title with Icon */}
                   <div className="flex items-center justify-center gap-2 mb-3">
                     {(() => {
                       const iconUrl = getPaymentMethodIcon(primaryPayment.methodName);
@@ -830,46 +851,36 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
                       {primaryPayment.methodName || (language === 'ar' ? 'الدفع' : 'Payment')}
                     </span>
                   </div>
-                  {primaryPayment.accountOwner && (
-                    <p className="text-xs text-muted-foreground">
-                      {primaryPayment.accountOwner}
-                    </p>
-                  )}
-                  {primaryPayment.accountNumber && (
-                    <p className="text-xs font-mono text-foreground mt-1">
-                      <span dir="ltr" style={{ unicodeBidi: 'embed' }}>{primaryPayment.accountNumber}</span>
-                    </p>
-                  )}
+                  
+                  {/* 2. QR Code */}
                   {primaryPayment.paymentLink && (
-                    <div className="mt-3 flex flex-col items-center">
-                      <div className="p-2 bg-white rounded-lg shadow-sm">
-                        <QRCodeImage value={primaryPayment.paymentLink} size={MAIN_QR_SIZE} />
-                      </div>
-                      <p className="mt-2 text-xs text-primary font-semibold">
-                        {language === 'ar' ? 'امسح للدفع' : 'Scan to pay'}
-                      </p>
+                    <div className="p-2 bg-white rounded-lg shadow-sm">
+                      <QRCodeImage value={primaryPayment.paymentLink} size={MAIN_QR_SIZE} />
                     </div>
                   )}
-                </div>
-                
-                {/* Right: Google Maps */}
-                <div className="text-center ps-4 flex flex-col items-center">
-                  <div className="flex items-center justify-center gap-2 mb-3">
-                    <svg width="20" height="20" viewBox="0 0 92.3 132.3" xmlns="http://www.w3.org/2000/svg">
-                      <path fill="#1a73e8" d="M60.2 2.2C55.8.8 51 0 46.1 0 32 0 19.3 6.4 10.8 16.5l21.8 18.3L60.2 2.2z"/>
-                      <path fill="#ea4335" d="M10.8 16.5C4.1 24.5 0 34.9 0 46.1c0 8.7 1.7 15.7 4.6 22l28-33.3-21.8-18.3z"/>
-                      <path fill="#4285f4" d="M46.1 28.5c9.8 0 17.7 7.9 17.7 17.7 0 4.3-1.6 8.3-4.2 11.4 0 0 13.9-16.6 27.5-32.7-5.6-10.8-15.3-19-27-22.7L32.6 34.8c3.3-3.8 8.1-6.3 13.5-6.3z"/>
-                      <path fill="#fbbc04" d="M46.1 63.5c-9.8 0-17.7-7.9-17.7-17.7 0-4.3 1.5-8.3 4.1-11.3l-28 33.3c4.8 10.6 12.8 19.2 21 29.9l34.1-40.5c-3.3 3.9-8.1 6.3-13.5 6.3z"/>
-                      <path fill="#34a853" d="M59.2 109.2c19.4-26.7 33.1-41.2 33.1-63.1 0-8.3-2-16.2-5.6-23.2L25.5 97.6c4.7 6.2 9.1 12.6 11.9 20.3 4.9 13.5 8.7 14.4 8.7 14.4s3.9-.9 8.7-14.4c.6-1.8 1.5-3.6 2.5-5.4l1.9-3.3z"/>
-                    </svg>
-                    <span className="text-sm font-bold text-foreground">Google Maps</span>
-                  </div>
-                  <div className="p-2 bg-white rounded-lg shadow-sm">
-                    <QRCodeImage value={reviewUrl} size={MAIN_QR_SIZE} />
-                  </div>
-                  <p className="mt-2 text-xs text-primary font-semibold">
-                    {language === 'ar' ? 'امسح للتقييم' : 'Scan to rate'}
-                  </p>
+                  
+                  {/* 3. Scan to Pay Label */}
+                  {primaryPayment.paymentLink && (
+                    <p className="mt-2 text-xs text-primary font-semibold">
+                      {language === 'ar' ? 'امسح للدفع' : 'Scan to pay'}
+                    </p>
+                  )}
+                  
+                  {/* 4. Account Owner & Number */}
+                  {(primaryPayment.accountOwner || primaryPayment.accountNumber) && (
+                    <div className="mt-2 text-center">
+                      {primaryPayment.accountOwner && (
+                        <p className="text-xs text-muted-foreground">
+                          {primaryPayment.accountOwner}
+                        </p>
+                      )}
+                      {primaryPayment.accountNumber && (
+                        <p className="text-xs font-mono text-foreground mt-0.5">
+                          <span dir="ltr" style={{ unicodeBidi: 'embed' }}>{primaryPayment.accountNumber}</span>
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
