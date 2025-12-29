@@ -672,15 +672,14 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
         </Button>
       </div>
       
-      {/* Printable Sticker - 5:9 aspect ratio (wider layout) */}
+      {/* Printable Sticker - Wider layout (500px, no fixed aspect ratio) */}
       <div className="flex justify-center">
         <div
           ref={stickerRef}
           id="printable-sticker"
-          className="w-[500px] bg-white overflow-hidden"
+          className="w-[500px] bg-white overflow-hidden shadow-lg rounded-lg"
           style={{ 
-            fontFamily: language === 'ar' ? 'Tajawal, sans-serif' : 'Inter, sans-serif',
-            aspectRatio: '5/9'
+            fontFamily: language === 'ar' ? 'Tajawal, sans-serif' : 'Inter, sans-serif'
           }}
           dir={language === 'ar' ? 'rtl' : 'ltr'}
         >
