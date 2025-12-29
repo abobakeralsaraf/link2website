@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useAuth } from '@/hooks/useAuth';
-import { BusinessData } from '@/lib/types';
+import { BusinessData, PaymentMethod } from '@/lib/types';
 import { GeneratedWebsite } from './generated/GeneratedWebsite';
 import { PrintableSticker } from './PrintableSticker';
 import { Button } from '@/components/ui/button';
@@ -15,11 +15,12 @@ import { Link } from 'react-router-dom';
 
 interface WebsitePreviewProps {
   business: BusinessData;
+  paymentMethods?: PaymentMethod[];
 }
 
 type ViewMode = 'desktop' | 'tablet' | 'mobile';
 
-export function WebsitePreview({ business }: WebsitePreviewProps) {
+export function WebsitePreview({ business, paymentMethods = [] }: WebsitePreviewProps) {
   const { t, language } = useLanguage();
   const { user } = useAuth();
   const [viewMode, setViewMode] = useState<ViewMode>('desktop');
@@ -276,7 +277,7 @@ export function WebsitePreview({ business }: WebsitePreviewProps) {
               </p>
             </CardHeader>
             <CardContent>
-              <PrintableSticker business={business} />
+              <PrintableSticker business={business} paymentMethods={paymentMethods} />
             </CardContent>
           </Card>
         </TabsContent>

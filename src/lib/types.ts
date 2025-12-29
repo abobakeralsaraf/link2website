@@ -43,6 +43,14 @@ export interface DayPeriod {
   close: string;
 }
 
+export interface PaymentMethod {
+  id: string;
+  methodName: string;
+  accountOwner: string;
+  accountNumber: string;
+  paymentLink: string;
+}
+
 export interface GeneratedSite {
   business: BusinessData;
   generatedAt: string;
