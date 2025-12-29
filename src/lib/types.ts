@@ -43,8 +43,16 @@ export interface DayPeriod {
   close: string;
 }
 
+export interface PaymentMethodType {
+  id: string;
+  name: string;
+  name_ar: string;
+  icon_url: string;
+}
+
 export interface PaymentMethod {
   id: string;
+  methodTypeId?: string;
   methodName: string;
   accountOwner: string;
   accountNumber: string;

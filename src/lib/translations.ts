@@ -32,8 +32,10 @@ export const translations = {
     generating: 'Generating...',
     
     // Demo
-    tryDemo: 'Try Demo',
+    tryDemoWithPayment: 'Demo with Payment',
+    tryDemoWithoutPayment: 'Demo without Payment',
     demoDescription: 'See how it works with a sample business',
+    selectPaymentMethod: 'Select payment method',
     
     // Errors
     errorTitle: 'Error',
@@ -267,8 +269,10 @@ export const translations = {
     generating: 'جارٍ الإنشاء...',
     
     // Demo
-    tryDemo: 'جرب العرض التوضيحي',
+    tryDemoWithPayment: 'تجربة مع الدفع',
+    tryDemoWithoutPayment: 'تجربة بدون دفع',
     demoDescription: 'شاهد كيف يعمل مع عمل نموذجي',
+    selectPaymentMethod: 'اختر وسيلة الدفع',
     
     // Errors
     errorTitle: 'خطأ',
