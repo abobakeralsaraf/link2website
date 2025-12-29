@@ -1,5 +1,5 @@
-import { useRef, useCallback, useState } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
+import { useRef, useCallback, useState, useEffect } from 'react';
+import { QRCodeCanvas } from 'qrcode.react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import type { BusinessData } from '@/lib/types';
@@ -7,6 +7,63 @@ import { useLanguage } from '@/hooks/useLanguage';
 import { Button } from '@/components/ui/button';
 import { Download, Printer, Star, MapPin, Clock, Quote, User, Loader2, FileText } from 'lucide-react';
 import { toast } from 'sonner';
+
+// QR Code component that renders as an image for PDF compatibility
+function QRCodeImage({ value, size, className }: { value: string; size: number; className?: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [imgSrc, setImgSrc] = useState<string>('');
+
+  useEffect(() => {
+    // Convert canvas to data URL after render
+    const timer = setTimeout(() => {
+      if (canvasRef.current) {
+        try {
+          const dataUrl = canvasRef.current.toDataURL('image/png');
+          setImgSrc(dataUrl);
+        } catch (e) {
+          console.error('QR conversion error:', e);
+        }
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [value, size]);
+
+  return (
+    <div className={className} style={{ width: size, height: size }}>
+      {/* Hidden canvas for QR generation */}
+      <div style={{ position: 'absolute', left: -9999, top: 0 }}>
+        <QRCodeCanvas
+          ref={canvasRef}
+          value={value}
+          size={size * 2}
+          level="H"
+          includeMargin={false}
+          bgColor="#ffffff"
+          fgColor="#000000"
+        />
+      </div>
+      {/* Visible image for PDF capture */}
+      {imgSrc ? (
+        <img 
+          src={imgSrc} 
+          alt="QR Code" 
+          width={size} 
+          height={size}
+          style={{ display: 'block', width: size, height: size }}
+        />
+      ) : (
+        <QRCodeCanvas
+          value={value}
+          size={size}
+          level="H"
+          includeMargin={false}
+          bgColor="#ffffff"
+          fgColor="#000000"
+        />
+      )}
+    </div>
+  );
+}
 
 type PrintableStickerProps = {
   business: BusinessData;
@@ -131,7 +188,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
         scale: 2,
         backgroundColor: '#ffffff',
         useCORS: true,
-        allowTaint: false,
+        allowTaint: true,
         logging: false,
       });
 
@@ -213,7 +270,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
         scale: 4,
         backgroundColor: '#ffffff',
         useCORS: true,
-        allowTaint: false,
+        allowTaint: true,
         logging: false,
       });
 
@@ -520,7 +577,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
                       ))}
                     </div>
                   </div>
-                  <p className="text-[10px] text-muted-foreground line-clamp-2 leading-relaxed">
+                  <p className="text-[10px] text-muted-foreground leading-relaxed" style={{ height: 'auto', overflow: 'visible' }}>
                     {language === 'ar' && review.textAr ? review.textAr : review.text}
                   </p>
                 </div>
@@ -546,14 +603,7 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
             {/* QR Code */}
             <div className="py-3">
               <div className="inline-block p-2 bg-white">
-                <QRCodeSVG
-                  value={reviewUrl}
-                  size={100}
-                  level="H"
-                  includeMargin={false}
-                  bgColor="transparent"
-                  fgColor="#000000"
-                />
+                <QRCodeImage value={reviewUrl} size={100} />
               </div>
               <p className="mt-1.5 text-xs font-semibold text-primary">
                 {language === 'ar' 
@@ -595,17 +645,10 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
                 <p className="font-bold text-foreground">
                   {language === 'ar' ? 'تواصل واتساب' : 'WhatsApp us'}
                 </p>
-                <p className="text-[10px] mt-0.5">+20 151 416 7733</p>
+                <p className="text-[10px] mt-0.5"><span dir="ltr" style={{ unicodeBidi: 'embed' }}>+20 151 416 7733</span></p>
               </div>
               <div className="flex-shrink-0">
-                <QRCodeSVG
-                  value={whatsappUrl}
-                  size={45}
-                  level="M"
-                  includeMargin={false}
-                  bgColor="transparent"
-                  fgColor="#000000"
-                />
+                <QRCodeImage value={whatsappUrl} size={45} />
               </div>
             </div>
           </div>
