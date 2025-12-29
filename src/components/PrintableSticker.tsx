@@ -5,7 +5,9 @@ import { jsPDF } from 'jspdf';
 import type { BusinessData } from '@/lib/types';
 import { useLanguage } from '@/hooks/useLanguage';
 import { Button } from '@/components/ui/button';
-import { Download, Printer, Star, MapPin, Clock, Quote, User, Loader2, FileText } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Download, Printer, Star, MapPin, Clock, Quote, User, Loader2, FileText, Wallet, CreditCard, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 // Negative keyword blacklist for review filtering
@@ -89,6 +91,14 @@ function QRCodeImage({ value, size, className }: { value: string; size: number; 
   );
 }
 
+// Payment Details Type
+type PaymentDetails = {
+  methodName: string;
+  accountName: string;
+  accountNumber: string;
+  paymentLink: string;
+};
+
 type PrintableStickerProps = {
   business: BusinessData;
 };
@@ -126,6 +136,19 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  
+  // Payment Details State
+  const [paymentDetails, setPaymentDetails] = useState<PaymentDetails>({
+    methodName: '',
+    accountName: '',
+    accountNumber: '',
+    paymentLink: '',
+  });
+  
+  const hasPaymentDetails = paymentDetails.methodName.trim() || 
+                            paymentDetails.accountName.trim() || 
+                            paymentDetails.accountNumber.trim() ||
+                            paymentDetails.paymentLink.trim();
 
   const name = language === 'ar' && business.nameAr ? business.nameAr : business.name;
 
@@ -502,6 +525,62 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
         </Button>
       </div>
       
+      {/* Payment Details Input (Optional) */}
+      <div className="bg-muted/30 rounded-lg p-4 max-w-md mx-auto print:hidden">
+        <div className="flex items-center gap-2 mb-3">
+          <Wallet className="w-4 h-4 text-primary" />
+          <h3 className="text-sm font-semibold">
+            {language === 'ar' ? 'تفاصيل الدفع (اختياري)' : 'Payment Details (Optional)'}
+          </h3>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">
+              {language === 'ar' ? 'طريقة الدفع' : 'Payment Method'}
+            </Label>
+            <Input
+              placeholder={language === 'ar' ? 'مثال: InstaPay' : 'e.g., InstaPay'}
+              value={paymentDetails.methodName}
+              onChange={(e) => setPaymentDetails(prev => ({ ...prev, methodName: e.target.value }))}
+              className="h-8 text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">
+              {language === 'ar' ? 'اسم الحساب' : 'Account Name'}
+            </Label>
+            <Input
+              placeholder={language === 'ar' ? 'مثال: أحمد محمد' : 'e.g., Ahmed Mohamed'}
+              value={paymentDetails.accountName}
+              onChange={(e) => setPaymentDetails(prev => ({ ...prev, accountName: e.target.value }))}
+              className="h-8 text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">
+              {language === 'ar' ? 'رقم الحساب / IBAN' : 'Account Number / IBAN'}
+            </Label>
+            <Input
+              placeholder={language === 'ar' ? 'رقم الحساب' : 'Account number'}
+              value={paymentDetails.accountNumber}
+              onChange={(e) => setPaymentDetails(prev => ({ ...prev, accountNumber: e.target.value }))}
+              className="h-8 text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">
+              {language === 'ar' ? 'رابط الدفع' : 'Payment Link'}
+            </Label>
+            <Input
+              placeholder="https://..."
+              value={paymentDetails.paymentLink}
+              onChange={(e) => setPaymentDetails(prev => ({ ...prev, paymentLink: e.target.value }))}
+              className="h-8 text-sm"
+            />
+          </div>
+        </div>
+      </div>
+      
       {/* Printable Sticker - Seamless poster design */}
       <div className="flex justify-center">
         <div
@@ -614,9 +693,9 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
             </div>
           )}
           
-          {/* Main Content - CTA */}
-          <div className="px-4 py-4 text-center bg-white">
-            <div className="space-y-0.5">
+          {/* Main Content - Conditional Layout */}
+          <div className="px-4 py-4 bg-white">
+            <div className="text-center space-y-0.5 mb-3">
               <p className="text-base font-bold text-foreground leading-relaxed">
                 {language === 'ar' 
                   ? 'لأننا نثق في جودة خدماتنا' 
@@ -629,29 +708,87 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
               </p>
             </div>
             
-            {/* Google Maps Logo */}
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <svg width="20" height="20" viewBox="0 0 92.3 132.3" xmlns="http://www.w3.org/2000/svg">
-                <path fill="#1a73e8" d="M60.2 2.2C55.8.8 51 0 46.1 0 32 0 19.3 6.4 10.8 16.5l21.8 18.3L60.2 2.2z"/>
-                <path fill="#ea4335" d="M10.8 16.5C4.1 24.5 0 34.9 0 46.1c0 8.7 1.7 15.7 4.6 22l28-33.3-21.8-18.3z"/>
-                <path fill="#4285f4" d="M46.1 28.5c9.8 0 17.7 7.9 17.7 17.7 0 4.3-1.6 8.3-4.2 11.4 0 0 13.9-16.6 27.5-32.7-5.6-10.8-15.3-19-27-22.7L32.6 34.8c3.3-3.8 8.1-6.3 13.5-6.3z"/>
-                <path fill="#fbbc04" d="M46.1 63.5c-9.8 0-17.7-7.9-17.7-17.7 0-4.3 1.5-8.3 4.1-11.3l-28 33.3c4.8 10.6 12.8 19.2 21 29.9l34.1-40.5c-3.3 3.9-8.1 6.3-13.5 6.3z"/>
-                <path fill="#34a853" d="M59.2 109.2c19.4-26.7 33.1-41.2 33.1-63.1 0-8.3-2-16.2-5.6-23.2L25.5 97.6c4.7 6.2 9.1 12.6 11.9 20.3 4.9 13.5 8.7 14.4 8.7 14.4s3.9-.9 8.7-14.4c.6-1.8 1.5-3.6 2.5-5.4l1.9-3.3z"/>
-              </svg>
-              <span className="text-sm font-bold text-foreground">Google Maps</span>
-            </div>
-            
-            {/* QR Code */}
-            <div className="py-2">
-              <div className="inline-block p-2 bg-white rounded-lg shadow-sm">
-                <QRCodeImage value={reviewUrl} size={100} />
+            {/* Conditional Layout: 2-Column if payment details exist, else centered */}
+            {hasPaymentDetails ? (
+              <div className="grid grid-cols-2 gap-3">
+                {/* Left: Payment Details */}
+                <div className="text-center border-e border-border/50 pe-3">
+                  <div className="flex items-center justify-center gap-1.5 mb-2">
+                    <CreditCard className="w-4 h-4 text-primary" />
+                    <span className="text-xs font-bold text-foreground">
+                      {paymentDetails.methodName || (language === 'ar' ? 'الدفع' : 'Payment')}
+                    </span>
+                  </div>
+                  {paymentDetails.accountName && (
+                    <p className="text-[10px] text-muted-foreground">
+                      {paymentDetails.accountName}
+                    </p>
+                  )}
+                  {paymentDetails.accountNumber && (
+                    <p className="text-[10px] font-mono text-foreground mt-0.5">
+                      <span dir="ltr" style={{ unicodeBidi: 'embed' }}>{paymentDetails.accountNumber}</span>
+                    </p>
+                  )}
+                  {paymentDetails.paymentLink && (
+                    <div className="mt-2">
+                      <div className="inline-block p-1.5 bg-white rounded shadow-sm">
+                        <QRCodeImage value={paymentDetails.paymentLink} size={70} />
+                      </div>
+                      <p className="mt-1 text-[9px] text-primary font-semibold">
+                        {language === 'ar' ? 'امسح للدفع' : 'Scan to pay'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Right: Google Maps */}
+                <div className="text-center ps-3">
+                  <div className="flex items-center justify-center gap-1.5 mb-2">
+                    <svg width="16" height="16" viewBox="0 0 92.3 132.3" xmlns="http://www.w3.org/2000/svg">
+                      <path fill="#1a73e8" d="M60.2 2.2C55.8.8 51 0 46.1 0 32 0 19.3 6.4 10.8 16.5l21.8 18.3L60.2 2.2z"/>
+                      <path fill="#ea4335" d="M10.8 16.5C4.1 24.5 0 34.9 0 46.1c0 8.7 1.7 15.7 4.6 22l28-33.3-21.8-18.3z"/>
+                      <path fill="#4285f4" d="M46.1 28.5c9.8 0 17.7 7.9 17.7 17.7 0 4.3-1.6 8.3-4.2 11.4 0 0 13.9-16.6 27.5-32.7-5.6-10.8-15.3-19-27-22.7L32.6 34.8c3.3-3.8 8.1-6.3 13.5-6.3z"/>
+                      <path fill="#fbbc04" d="M46.1 63.5c-9.8 0-17.7-7.9-17.7-17.7 0-4.3 1.5-8.3 4.1-11.3l-28 33.3c4.8 10.6 12.8 19.2 21 29.9l34.1-40.5c-3.3 3.9-8.1 6.3-13.5 6.3z"/>
+                      <path fill="#34a853" d="M59.2 109.2c19.4-26.7 33.1-41.2 33.1-63.1 0-8.3-2-16.2-5.6-23.2L25.5 97.6c4.7 6.2 9.1 12.6 11.9 20.3 4.9 13.5 8.7 14.4 8.7 14.4s3.9-.9 8.7-14.4c.6-1.8 1.5-3.6 2.5-5.4l1.9-3.3z"/>
+                    </svg>
+                    <span className="text-xs font-bold text-foreground">Google Maps</span>
+                  </div>
+                  <div className="inline-block p-1.5 bg-white rounded shadow-sm">
+                    <QRCodeImage value={reviewUrl} size={70} />
+                  </div>
+                  <p className="mt-1 text-[9px] text-primary font-semibold">
+                    {language === 'ar' ? 'امسح للتقييم' : 'Scan to rate'}
+                  </p>
+                </div>
               </div>
-              <p className="mt-1.5 text-xs font-semibold text-primary">
-                {language === 'ar' 
-                  ? 'امسح للتقييم على جوجل' 
-                  : 'Scan to rate on Google'}
-              </p>
-            </div>
+            ) : (
+              /* Centered Layout (No payment details) */
+              <div className="text-center">
+                {/* Google Maps Logo */}
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <svg width="20" height="20" viewBox="0 0 92.3 132.3" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="#1a73e8" d="M60.2 2.2C55.8.8 51 0 46.1 0 32 0 19.3 6.4 10.8 16.5l21.8 18.3L60.2 2.2z"/>
+                    <path fill="#ea4335" d="M10.8 16.5C4.1 24.5 0 34.9 0 46.1c0 8.7 1.7 15.7 4.6 22l28-33.3-21.8-18.3z"/>
+                    <path fill="#4285f4" d="M46.1 28.5c9.8 0 17.7 7.9 17.7 17.7 0 4.3-1.6 8.3-4.2 11.4 0 0 13.9-16.6 27.5-32.7-5.6-10.8-15.3-19-27-22.7L32.6 34.8c3.3-3.8 8.1-6.3 13.5-6.3z"/>
+                    <path fill="#fbbc04" d="M46.1 63.5c-9.8 0-17.7-7.9-17.7-17.7 0-4.3 1.5-8.3 4.1-11.3l-28 33.3c4.8 10.6 12.8 19.2 21 29.9l34.1-40.5c-3.3 3.9-8.1 6.3-13.5 6.3z"/>
+                    <path fill="#34a853" d="M59.2 109.2c19.4-26.7 33.1-41.2 33.1-63.1 0-8.3-2-16.2-5.6-23.2L25.5 97.6c4.7 6.2 9.1 12.6 11.9 20.3 4.9 13.5 8.7 14.4 8.7 14.4s3.9-.9 8.7-14.4c.6-1.8 1.5-3.6 2.5-5.4l1.9-3.3z"/>
+                  </svg>
+                  <span className="text-sm font-bold text-foreground">Google Maps</span>
+                </div>
+                
+                {/* QR Code */}
+                <div className="py-2">
+                  <div className="inline-block p-2 bg-white rounded-lg shadow-sm">
+                    <QRCodeImage value={reviewUrl} size={100} />
+                  </div>
+                  <p className="mt-1.5 text-xs font-semibold text-primary">
+                    {language === 'ar' 
+                      ? 'امسح للتقييم على جوجل' 
+                      : 'Scan to rate on Google'}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
           
           {/* Footer - Centered Promo Section */}
