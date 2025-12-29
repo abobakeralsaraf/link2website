@@ -14,15 +14,15 @@ const NEGATIVE_KEYWORDS = [
   'قديم', 'سيء', 'وسخ', 'غالي', 'زحمة', 'إزعاج', 'سيئ', 'قذر', 'بطيء'
 ];
 
-// Filter reviews: only 5-star, no negative keywords
+// Filter reviews: 4-5 star with no negative keywords (zero tolerance)
 function filterBestReviews(reviews: BusinessData['reviews'], language: string): BusinessData['reviews'] {
   if (!reviews || reviews.length === 0) return [];
   
   const filtered = reviews.filter(review => {
-    // Only 5-star reviews
-    if (review.rating !== 5) return false;
+    // Allow 4 or 5-star reviews only
+    if (review.rating < 4) return false;
     
-    // Check for negative keywords
+    // Zero tolerance: text MUST NOT contain any negative keywords
     const text = (language === 'ar' && review.textAr ? review.textAr : review.text).toLowerCase();
     const hasNegative = NEGATIVE_KEYWORDS.some(keyword => text.includes(keyword.toLowerCase()));
     if (hasNegative) return false;
@@ -576,8 +576,8 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
             </div>
           )}
           
-          {/* Customer Reviews Section */}
-          {topReviews.length > 0 ? (
+          {/* Customer Reviews Section - Hidden if no reviews pass filter */}
+          {topReviews.length > 0 && (
             <div className="px-4 py-2 space-y-2 bg-white">
               {topReviews.map((review, index) => (
                 <div key={index} className="relative bg-gray-50/50 rounded-lg p-3">
@@ -611,14 +611,6 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
                   </p>
                 </div>
               ))}
-            </div>
-          ) : (
-            <div className="px-4 py-3 bg-white text-center">
-              <p className="text-sm text-muted-foreground italic">
-                {language === 'ar' 
-                  ? '✓ موثوق من آلاف العملاء السعداء'
-                  : '✓ Trusted by thousands of happy customers'}
-              </p>
             </div>
           )}
           
@@ -662,21 +654,23 @@ export function PrintableSticker({ business }: PrintableStickerProps) {
             </div>
           </div>
           
-          {/* Footer */}
+          {/* Footer - Centered Promo Section */}
           <div className="bg-gray-50 px-4 py-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex-1 text-xs text-muted-foreground">
-                <p className="font-medium mb-0.5">
-                  {language === 'ar' 
-                    ? 'لطلب استيكر كهذا' 
-                    : 'To order a sticker like this'}
-                </p>
-                <p className="font-bold text-foreground">
-                  {language === 'ar' ? 'تواصل واتساب' : 'WhatsApp us'}
-                </p>
-                <p className="text-[10px] mt-0.5"><span dir="ltr" style={{ unicodeBidi: 'embed' }}>+20 151 416 7733</span></p>
-              </div>
-              <div className="flex-shrink-0">
+            <div className="flex flex-col items-center justify-center text-center gap-2">
+              <p className="text-xs text-muted-foreground font-medium">
+                {language === 'ar' 
+                  ? 'لطلب استيكر كهذا' 
+                  : 'To order a sticker like this'}
+              </p>
+              <div className="flex items-center justify-center gap-3">
+                <div className="text-xs">
+                  <p className="font-bold text-foreground">
+                    {language === 'ar' ? 'تواصل واتساب' : 'WhatsApp us'}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    <span dir="ltr" style={{ unicodeBidi: 'embed' }}>+20 151 416 7733</span>
+                  </p>
+                </div>
                 <QRCodeImage value={whatsappUrl} size={45} />
               </div>
             </div>
