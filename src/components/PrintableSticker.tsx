@@ -2,6 +2,7 @@ import { useRef, useCallback, useState, useEffect } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import * as pdfjsLib from 'pdfjs-dist';
 import type { BusinessData, PaymentMethod } from '@/lib/types';
 import { filterPositiveReviews } from '@/lib/reviewUtils';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -10,6 +11,9 @@ import { Button } from '@/components/ui/button';
 import { Download, Printer, Star, Quote, User, Loader2, FileText, CreditCard, Wallet, Image } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+
+// Configure PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 // QR Code component that renders as a Base64 image for PDF compatibility
 function QRCodeImage({ value, size, className }: { value: string; size: number; className?: string }) {
@@ -292,27 +296,33 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
     return `${base}/functions/v1/image-proxy?url=${encodeURIComponent(src)}`;
   }, []);
 
-  const renderStickerWebp = useCallback(async () => {
+  // Generate PDF and convert to WebP image
+  const generatePdfAsWebp = useCallback(async (): Promise<string | null> => {
     if (!stickerRef.current) return null;
 
-    const baseW = Math.max(1, Math.round(stickerRef.current.offsetWidth));
-    const baseH = Math.max(1, Math.round(stickerRef.current.offsetHeight));
+    // Wait for QR codes to render
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    const element = stickerRef.current;
+    const baseW = element.offsetWidth;
+    const baseH = element.offsetHeight;
 
-    const clone = stickerRef.current.cloneNode(true) as HTMLElement;
+    // Clone for capture
+    const clone = element.cloneNode(true) as HTMLElement;
     clone.removeAttribute('id');
     clone.style.width = `${baseW}px`;
     clone.style.height = `${baseH}px`;
     clone.style.background = '#ffffff';
     clone.style.fontFamily = language === 'ar' ? 'Tajawal, sans-serif' : 'Inter, sans-serif';
 
-    Array.from(clone.querySelectorAll('style')).forEach((s) => s.remove());
-
+    // Remove all borders/shadows in clone
     const resetStyle = document.createElement('style');
     resetStyle.textContent = `
       *, *::before, *::after { outline: none !important; border: none !important; box-shadow: none !important; }
     `;
     clone.prepend(resetStyle);
 
+    // Proxy images
     const imgs = Array.from(clone.querySelectorAll<HTMLImageElement>('img'));
     imgs.forEach((img) => {
       const src = img.getAttribute('src') || '';
@@ -322,19 +332,18 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
       img.decoding = 'sync';
     });
 
+    // Stage offscreen
     const stage = document.createElement('div');
     stage.style.position = 'fixed';
     stage.style.left = '-10000px';
     stage.style.top = '0';
     stage.style.zIndex = '-1';
     stage.style.background = '#ffffff';
-    stage.style.display = 'inline-block';
-    stage.style.width = `${baseW}px`;
-    stage.style.height = `${baseH}px`;
     stage.appendChild(clone);
     document.body.appendChild(stage);
 
     try {
+      // Wait for images
       await Promise.race([
         Promise.allSettled(
           imgs.map(async (img) => {
@@ -347,26 +356,88 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
                   img.onerror = () => resolve();
                 });
               }
-            } catch {
-              // ignore
-            }
+            } catch {}
           }),
-        ) as unknown as Promise<void>,
+        ),
         new Promise<void>((resolve) => setTimeout(resolve, 6000)),
       ]);
 
+      // High-quality capture
       const canvas = await html2canvas(clone, {
-        scale: 2,
+        scale: 4,
         backgroundColor: '#ffffff',
         useCORS: true,
         allowTaint: true,
         logging: false,
       });
 
-      const pngDataUrl = canvas.toDataURL('image/png');
-      return convertDataUrlToWebp(pngDataUrl, 0.92);
-    } finally {
       document.body.removeChild(stage);
+
+      // Create PDF with 5:9 aspect ratio
+      const pdfWidth = 100;
+      const pdfHeight = 180;
+      
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [pdfWidth, pdfHeight],
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      
+      // Calculate dimensions to fit while maintaining aspect ratio
+      const canvasRatio = canvas.width / canvas.height;
+      const pdfRatio = pdfWidth / pdfHeight;
+      
+      let imgWidth = pdfWidth;
+      let imgHeight = pdfHeight;
+      let offsetX = 0;
+      let offsetY = 0;
+      
+      if (canvasRatio > pdfRatio) {
+        imgHeight = pdfWidth / canvasRatio;
+        offsetY = (pdfHeight - imgHeight) / 2;
+      } else {
+        imgWidth = pdfHeight * canvasRatio;
+        offsetX = (pdfWidth - imgWidth) / 2;
+      }
+
+      pdf.addImage(imgData, 'PNG', offsetX, offsetY, imgWidth, imgHeight);
+
+      // Convert PDF to ArrayBuffer
+      const pdfArrayBuffer = pdf.output('arraybuffer');
+      
+      // Load PDF with pdf.js
+      const pdfDoc = await pdfjsLib.getDocument({ data: pdfArrayBuffer }).promise;
+      const page = await pdfDoc.getPage(1);
+      
+      // Render at high resolution (scale 3 for quality)
+      const viewport = page.getViewport({ scale: 3 });
+      
+      const renderCanvas = document.createElement('canvas');
+      renderCanvas.width = viewport.width;
+      renderCanvas.height = viewport.height;
+      const ctx = renderCanvas.getContext('2d');
+      
+      if (!ctx) return null;
+      
+      await page.render({
+        canvasContext: ctx,
+        viewport: viewport,
+      }).promise;
+
+      // Convert to WebP
+      const webpDataUrl = renderCanvas.toDataURL('image/webp', 0.92);
+      
+      // Check if WebP is supported, fallback to PNG
+      if (webpDataUrl.startsWith('data:image/webp')) {
+        return webpDataUrl;
+      }
+      return renderCanvas.toDataURL('image/png');
+      
+    } catch (error) {
+      document.body.removeChild(stage);
+      throw error;
     }
   }, [getProxyUrl, language]);
 
@@ -503,7 +574,7 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
     actionLockRef.current = 'download';
     setIsDownloading(true);
     try {
-      const dataUrl = await renderStickerWebp();
+      const dataUrl = await generatePdfAsWebp();
       if (!dataUrl) return;
 
       const link = document.createElement('a');
@@ -519,7 +590,7 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
       setIsDownloading(false);
       actionLockRef.current = null;
     }
-  }, [name, language, renderStickerWebp]);
+  }, [name, language, generatePdfAsWebp]);
 
   const handlePrint = useCallback(async () => {
     if (actionLockRef.current) return;
@@ -527,7 +598,7 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
     actionLockRef.current = 'print';
     setIsPrinting(true);
     try {
-      const dataUrl = await renderStickerWebp();
+      const dataUrl = await generatePdfAsWebp();
       if (!dataUrl) return;
 
       const printWindow = window.open('', '_blank');
@@ -573,7 +644,7 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
       setIsPrinting(false);
       actionLockRef.current = null;
     }
-  }, [language, name, renderStickerWebp]);
+  }, [language, name, generatePdfAsWebp]);
 
   const renderStars = (rating: number) => {
     const fullStars = Math.floor(rating);
