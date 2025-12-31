@@ -1,5 +1,6 @@
 import { useLanguage } from '@/hooks/useLanguage';
 import { BusinessData } from '@/lib/types';
+import { filterPositiveReviews } from '@/lib/reviewUtils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Star, MessageSquare, User } from 'lucide-react';
 
@@ -10,15 +11,12 @@ interface ReviewsSectionProps {
 export function ReviewsSection({ business }: ReviewsSectionProps) {
   const { language, t } = useLanguage();
 
-  if (business.reviews.length === 0) {
-    return (
-      <Card className="shadow-card-lg border-border/50">
-        <CardContent className="p-8 text-center">
-          <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">{t('noReviews')}</p>
-        </CardContent>
-      </Card>
-    );
+  // فلترة التقييمات: 4-5 نجوم فقط بدون كلمات سلبية
+  const filteredReviews = filterPositiveReviews(business.reviews, language);
+
+  // إخفاء القسم إذا لم توجد تقييمات إيجابية
+  if (filteredReviews.length === 0) {
+    return null;
   }
 
   return (
@@ -33,7 +31,7 @@ export function ReviewsSection({ business }: ReviewsSectionProps) {
       </CardHeader>
       <CardContent className="p-4 md:p-6">
         <div className="space-y-4">
-          {business.reviews.slice(0, 5).map((review, index) => (
+          {filteredReviews.slice(0, 5).map((review, index) => (
             <div 
               key={index}
               className="p-4 bg-secondary/30 rounded-xl border border-border/30 animate-fade-up"

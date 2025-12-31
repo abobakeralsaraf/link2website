@@ -3,37 +3,13 @@ import { QRCodeCanvas } from 'qrcode.react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import type { BusinessData, PaymentMethod } from '@/lib/types';
+import { filterPositiveReviews } from '@/lib/reviewUtils';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useAdminWhatsApp } from '@/hooks/useAdminWhatsApp';
 import { Button } from '@/components/ui/button';
 import { Download, Printer, Star, Quote, User, Loader2, FileText, CreditCard, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-
-// Negative keyword blacklist for review filtering
-const NEGATIVE_KEYWORDS = [
-  'old', 'dirty', 'bad', 'slow', 'expensive', 'noisy', 'terrible', 'awful', 'worst', 'horrible',
-  'قديم', 'سيء', 'وسخ', 'غالي', 'زحمة', 'إزعاج', 'سيئ', 'قذر', 'بطيء'
-];
-
-// Filter reviews: 4-5 star with no negative keywords (zero tolerance)
-function filterBestReviews(reviews: BusinessData['reviews'], language: string): BusinessData['reviews'] {
-  if (!reviews || reviews.length === 0) return [];
-  
-  const filtered = reviews.filter(review => {
-    // Allow 4 or 5-star reviews only
-    if (review.rating < 4) return false;
-    
-    // Zero tolerance: text MUST NOT contain any negative keywords
-    const text = (language === 'ar' && review.textAr ? review.textAr : review.text).toLowerCase();
-    const hasNegative = NEGATIVE_KEYWORDS.some(keyword => text.includes(keyword.toLowerCase()));
-    if (hasNegative) return false;
-    
-    return true;
-  });
-  
-  return filtered.slice(0, 2);
-}
 
 // QR Code component that renders as a Base64 image for PDF compatibility
 function QRCodeImage({ value, size, className }: { value: string; size: number; className?: string }) {
@@ -307,8 +283,8 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
 
   const heroImage = business.photos?.[0];
   const displayPhotos = business.photos?.slice(1, 4) || [];
-  // Smart review filtering: 4-5 star only, no negative keywords
-  const filteredReviews = filterBestReviews(business.reviews, language);
+  // Smart review filtering: 4-5 star only, no negative keywords (using centralized utility)
+  const filteredReviews = filterPositiveReviews(business.reviews, language).slice(0, 2);
   const topReviews = filteredReviews.length > 0 ? filteredReviews : [];
 
   const getProxyUrl = useCallback((src: string) => {

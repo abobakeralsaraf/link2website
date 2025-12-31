@@ -1,5 +1,6 @@
 import { useLanguage } from '@/hooks/useLanguage';
 import { BusinessData } from '@/lib/types';
+import { filterPositiveReviews } from '@/lib/reviewUtils';
 import { motion } from 'framer-motion';
 import { Star, MessageSquare, User, Quote } from 'lucide-react';
 
@@ -10,7 +11,11 @@ interface PremiumReviewsProps {
 export function PremiumReviews({ business }: PremiumReviewsProps) {
   const { language, t } = useLanguage();
 
-  if (business.reviews.length === 0) {
+  // فلترة التقييمات: 4-5 نجوم فقط بدون كلمات سلبية
+  const filteredReviews = filterPositiveReviews(business.reviews, language);
+
+  // إخفاء القسم إذا لم توجد تقييمات إيجابية
+  if (filteredReviews.length === 0) {
     return null;
   }
 
@@ -62,7 +67,7 @@ export function PremiumReviews({ business }: PremiumReviewsProps) {
           viewport={{ once: true }}
           className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"
         >
-          {business.reviews.slice(0, 6).map((review, index) => (
+          {filteredReviews.slice(0, 6).map((review, index) => (
             <motion.div
               key={index}
               variants={itemVariants}
