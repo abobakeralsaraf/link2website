@@ -12,8 +12,8 @@ import { Download, Printer, Star, Quote, User, Loader2, FileText, CreditCard, Wa
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
-// Configure PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// Configure PDF.js to work without external worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = '';
 
 // QR Code component that renders as a Base64 image for PDF compatibility
 function QRCodeImage({ value, size, className }: { value: string; size: number; className?: string }) {
@@ -408,7 +408,7 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
       const pdfArrayBuffer = pdf.output('arraybuffer');
       
       // Load PDF with pdf.js
-      const pdfDoc = await pdfjsLib.getDocument({ data: pdfArrayBuffer }).promise;
+      const pdfDoc = await pdfjsLib.getDocument({ data: pdfArrayBuffer } as any).promise;
       const page = await pdfDoc.getPage(1);
       
       // Render at high resolution (scale 3 for quality)
