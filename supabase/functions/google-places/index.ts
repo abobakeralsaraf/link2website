@@ -296,24 +296,38 @@ async function fetchPlaceDetails(placeId: string): Promise<PlaceDetails> {
   }
 
   // Process reviews - sanitize to remove email addresses and PII
+  // Match Arabic reviews by author name instead of index for accurate data
   const reviews: Review[] = [];
   if (data.reviews && Array.isArray(data.reviews)) {
     const arabicReviews = dataAr?.reviews || [];
     
-    for (let i = 0; i < Math.min(5, data.reviews.length); i++) {
+    // إنشاء خريطة للتقييمات العربية بالاسم لمطابقة دقيقة
+    const arabicReviewsMap = new Map<string, typeof arabicReviews[0]>();
+    for (const arReview of arabicReviews) {
+      const authorName = arReview.authorAttribution?.displayName;
+      if (authorName) {
+        arabicReviewsMap.set(authorName, arReview);
+      }
+    }
+    console.log(`[INFO] Arabic reviews map created with ${arabicReviewsMap.size} entries`);
+    
+    // Sanitize review text to remove potential email addresses and phone numbers
+    const sanitizeText = (text: string) => {
+      if (!text) return '';
+      return text
+        .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[email]')
+        .replace(/(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g, '[phone]');
+    };
+    
+    for (let i = 0; i < Math.min(10, data.reviews.length); i++) {
       const review = data.reviews[i];
-      const arReview = arabicReviews[i];
+      const authorName = review.authorAttribution?.displayName || 'Anonymous';
       
-      // Sanitize review text to remove potential email addresses and phone numbers
-      const sanitizeText = (text: string) => {
-        if (!text) return '';
-        return text
-          .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[email protected]')
-          .replace(/(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g, '[phone]');
-      };
+      // مطابقة التقييم العربي بالاسم وليس الفهرس
+      const arReview = arabicReviewsMap.get(authorName);
       
       reviews.push({
-        authorName: review.authorAttribution?.displayName || 'Anonymous',
+        authorName: authorName,
         authorPhoto: review.authorAttribution?.photoUri || undefined,
         rating: review.rating || 5,
         text: sanitizeText(review.text?.text || ''),
@@ -322,6 +336,7 @@ async function fetchPlaceDetails(placeId: string): Promise<PlaceDetails> {
         relativeTime: review.relativePublishTimeDescription || '',
       });
     }
+    console.log(`[INFO] Processed ${reviews.length} reviews`);
   }
 
   // Process hours
