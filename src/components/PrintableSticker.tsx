@@ -7,7 +7,7 @@ import { filterPositiveReviews } from '@/lib/reviewUtils';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useAdminWhatsApp } from '@/hooks/useAdminWhatsApp';
 import { Button } from '@/components/ui/button';
-import { Download, Printer, Star, Quote, User, Loader2, FileText, CreditCard, Wallet } from 'lucide-react';
+import { Download, Printer, Star, Quote, User, Loader2, FileText, CreditCard, Wallet, Image } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -614,9 +614,14 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
             void handleDownload();
           }}
           disabled={isDownloading || isPrinting || isGeneratingPdf}
-          className="gap-2"
+          variant="default"
+          className="gap-2 bg-emerald-600 hover:bg-emerald-700"
         >
-          {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+          {isDownloading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Image className="w-4 h-4" />
+          )}
           {language === 'ar' ? 'تحميل WebP' : 'Download WebP'}
         </Button>
 
