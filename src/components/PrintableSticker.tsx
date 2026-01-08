@@ -143,16 +143,14 @@ export type StickerSize = 'small' | 'medium' | 'large';
 
 export const STICKER_PRESETS: Record<StickerSize, { 
   width: number; 
-  heroHeight: number; 
+  aspectRatio: number; // height = width * aspectRatio
   pdfWidth: number; 
-  pdfHeight: number; 
-  reviewsPerRow: number;
   label: string; 
   labelAr: string 
 }> = {
-  small: { width: 320, heroHeight: 160, pdfWidth: 80, pdfHeight: 160, reviewsPerRow: 2, label: 'Small (8×16 cm)', labelAr: 'صغير (8×16 سم)' },
-  medium: { width: 400, heroHeight: 200, pdfWidth: 100, pdfHeight: 200, reviewsPerRow: 2, label: 'Medium (10×20 cm)', labelAr: 'متوسط (10×20 سم)' },
-  large: { width: 480, heroHeight: 240, pdfWidth: 120, pdfHeight: 240, reviewsPerRow: 2, label: 'Large (12×24 cm)', labelAr: 'كبير (12×24 سم)' },
+  small: { width: 320, aspectRatio: 2, pdfWidth: 80, label: 'Small (8×16 cm)', labelAr: 'صغير (8×16 سم)' },
+  medium: { width: 400, aspectRatio: 2, pdfWidth: 100, label: 'Medium (10×20 cm)', labelAr: 'متوسط (10×20 سم)' },
+  large: { width: 480, aspectRatio: 2, pdfWidth: 120, label: 'Large (12×24 cm)', labelAr: 'كبير (12×24 سم)' },
 };
 
 export type PrintableStickerProps = {
@@ -396,9 +394,9 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
 
       document.body.removeChild(stage);
 
-      // Create PDF with selected dimensions
+      // Create PDF with selected dimensions (1:2 aspect ratio)
       const pdfWidth = currentPreset.pdfWidth;
-      const pdfHeight = currentPreset.pdfHeight;
+      const pdfHeight = pdfWidth * currentPreset.aspectRatio;
       
       const pdf = new jsPDF({
         orientation: 'portrait',
@@ -544,9 +542,9 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
 
       document.body.removeChild(stage);
 
-      // Create PDF with selected dimensions
+      // Create PDF with selected dimensions (1:2 aspect ratio)
       const pdfWidth = currentPreset.pdfWidth;
-      const pdfHeight = currentPreset.pdfHeight;
+      const pdfHeight = pdfWidth * currentPreset.aspectRatio;
       
       const pdf = new jsPDF({
         orientation: 'portrait',
@@ -786,23 +784,25 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
         </Button>
       </div>
       
-      {/* Printable Sticker - Dynamic width based on selected size */}
+      {/* Printable Sticker - Fixed aspect ratio container */}
       <div className="flex justify-center">
         <div
           ref={stickerRef}
           id="printable-sticker"
-          className="bg-white overflow-hidden shadow-lg rounded-lg"
+          className="bg-white shadow-lg rounded-lg flex flex-col"
           style={{ 
             width: `${currentPreset.width}px`,
-            fontFamily: language === 'ar' ? 'Tajawal, sans-serif' : 'Inter, sans-serif'
+            height: `${currentPreset.width * currentPreset.aspectRatio}px`,
+            fontFamily: language === 'ar' ? 'Tajawal, sans-serif' : 'Inter, sans-serif',
+            overflow: 'hidden'
           }}
           dir={language === 'ar' ? 'rtl' : 'ltr'}
         >
-          {/* Hero Image Header - Dynamic height based on selected size */}
+          {/* Hero Image Header - 25% of sticker height */}
           {heroImage ? (
             <div 
-              className="relative overflow-hidden"
-              style={{ height: `${currentPreset.heroHeight}px` }}
+              className="relative overflow-hidden flex-shrink-0"
+              style={{ height: '25%' }}
             >
               <img 
                 src={heroImage} 
@@ -820,40 +820,39 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
               </div>
             </div>
           ) : (
-            <div className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-primary-foreground p-8 text-center">
-              <div className="w-20 h-20 mx-auto mb-4 bg-white/20 rounded-full flex items-center justify-center">
-                <span className="text-4xl font-bold">{name.charAt(0)}</span>
+            <div className="bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-primary-foreground p-4 text-center flex-shrink-0" style={{ height: '25%' }}>
+              <div className="w-12 h-12 mx-auto mb-2 bg-white/20 rounded-full flex items-center justify-center">
+                <span className="text-2xl font-bold">{name.charAt(0)}</span>
               </div>
-              <h1 className="text-2xl font-bold mb-1">{name}</h1>
+              <h1 className="text-xl font-bold">{name}</h1>
             </div>
           )}
           
-          {/* Rating Section */}
+          {/* Rating Section - compact */}
           {business.rating && (
-            <div className="bg-white px-5 pt-5 pb-3">
-              <div className="flex items-center justify-center gap-4">
-                <div className="flex items-center gap-1">
+            <div className="bg-white px-3 py-2 flex-shrink-0">
+              <div className="flex items-center justify-center gap-3">
+                <div className="flex items-center gap-0.5">
                   {renderStars(business.rating)}
                 </div>
                 <div className="text-center">
-                  <span className="text-3xl font-bold text-primary">{business.rating}</span>
-                  <span className="text-base text-muted-foreground mx-1">/</span>
-                  <span className="text-base text-muted-foreground">5</span>
+                  <span className="text-xl font-bold text-primary">{business.rating}</span>
+                  <span className="text-sm text-muted-foreground mx-1">/5</span>
                 </div>
               </div>
-              <p className="text-center text-sm text-muted-foreground mt-2">
+              <p className="text-center text-xs text-muted-foreground mt-1">
                 {language === 'ar' 
-                  ? `${business.totalReviews} تقييم من العملاء`
-                  : `${business.totalReviews} customer reviews`}
+                  ? `${business.totalReviews} تقييم`
+                  : `${business.totalReviews} reviews`}
               </p>
             </div>
           )}
           
-          {/* Photo Gallery Strip */}
+          {/* Photo Gallery Strip - compact */}
           {displayPhotos.length > 0 && (
-            <div className="flex gap-2 px-5 py-3 bg-white">
+            <div className="flex gap-1 px-3 py-2 bg-white flex-shrink-0">
               {displayPhotos.map((photo, index) => (
-                <div key={index} className="flex-1 h-24 overflow-hidden rounded">
+                <div key={index} className="flex-1 h-16 overflow-hidden rounded">
                   <img 
                     src={photo} 
                     alt={`${name} ${index + 1}`}
@@ -866,41 +865,34 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
             </div>
           )}
           
-          {/* Customer Reviews Section - Grid layout for compact display */}
+          {/* Customer Reviews Section - Grid 2 columns, compact */}
           {topReviews.length > 0 && (
-            <div className="px-4 py-3 bg-white">
-              <div 
-                className="grid gap-2"
-                style={{ gridTemplateColumns: `repeat(${currentPreset.reviewsPerRow}, 1fr)` }}
-              >
+            <div className="px-3 py-2 bg-white flex-shrink-0">
+              <div className="grid grid-cols-2 gap-1">
                 {topReviews.map((review, index) => (
-                  <div key={index} className="relative bg-gray-50/50 rounded-lg p-3">
-                    <div className="flex items-center gap-2 mb-1">
+                  <div key={index} className="bg-gray-50/50 rounded p-2">
+                    <div className="flex items-center gap-1 mb-0.5">
                       {review.authorPhoto ? (
                         <img
                           src={review.authorPhoto}
                           alt={review.authorName}
                           crossOrigin="anonymous"
                           referrerPolicy="no-referrer"
-                          className="block w-6 h-6 rounded-full object-cover flex-shrink-0"
+                          className="block w-4 h-4 rounded-full object-cover flex-shrink-0"
                         />
                       ) : (
-                        <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                          <User className="w-3 h-3 text-primary" />
+                        <div className="w-4 h-4 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                          <User className="w-2 h-2 text-primary" />
                         </div>
                       )}
-                      <span className="text-xs font-semibold text-foreground truncate flex-1">{review.authorName}</span>
-                      <div className="flex items-center gap-0.5 flex-shrink-0">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`w-3 h-3 ${i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/30'}`}
-                          />
-                        ))}
+                      <span className="text-[10px] font-medium text-foreground truncate">{review.authorName}</span>
+                      <div className="flex items-center flex-shrink-0 ms-auto">
+                        <Star className="w-2.5 h-2.5 text-yellow-400 fill-yellow-400" />
+                        <span className="text-[10px] text-muted-foreground ms-0.5">{review.rating}</span>
                       </div>
                     </div>
                     <p 
-                      className="text-xs text-muted-foreground leading-tight"
+                      className="text-[9px] text-muted-foreground leading-tight"
                       style={{ 
                         display: '-webkit-box',
                         WebkitLineClamp: 2,
@@ -916,48 +908,38 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
             </div>
           )}
           
-          {/* Main Content - Conditional Layout */}
-          <div className="px-5 py-5 bg-white">
-            <div className="text-center space-y-1 mb-4">
-              <p className="text-lg font-bold text-foreground leading-relaxed">
-                {language === 'ar' 
-                  ? 'لأننا نثق في جودة خدماتنا' 
-                  : 'Because we trust our service quality'}
-              </p>
-              <p className="text-sm text-muted-foreground font-medium">
-                {language === 'ar' 
-                  ? 'ندعو الجميع لتقييمنا' 
-                  : 'We invite everyone to rate us'}
+          {/* Main Content - CTA & QR Codes - compact flex-1 to fill remaining space */}
+          <div className="px-3 py-2 bg-white flex-1 flex flex-col justify-center">
+            <div className="text-center mb-2">
+              <p className="text-sm font-bold text-foreground">
+                {language === 'ar' ? 'ندعوكم لتقييمنا' : 'Rate us'}
               </p>
             </div>
             
             {/* Conditional Layout: 2-Column if payment details exist, else centered */}
             {hasPaymentDetails && primaryPayment ? (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2">
                 {/* Left: Google Maps */}
-                <div className="text-center border-e border-border/50 pe-4 flex flex-col items-center">
-                  <div className="flex items-center justify-center gap-2 mb-3">
-                    <svg width="20" height="20" viewBox="0 0 92.3 132.3" xmlns="http://www.w3.org/2000/svg">
+                <div className="text-center flex flex-col items-center">
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <svg width="14" height="14" viewBox="0 0 92.3 132.3" xmlns="http://www.w3.org/2000/svg">
                       <path fill="#1a73e8" d="M60.2 2.2C55.8.8 51 0 46.1 0 32 0 19.3 6.4 10.8 16.5l21.8 18.3L60.2 2.2z"/>
                       <path fill="#ea4335" d="M10.8 16.5C4.1 24.5 0 34.9 0 46.1c0 8.7 1.7 15.7 4.6 22l28-33.3-21.8-18.3z"/>
                       <path fill="#4285f4" d="M46.1 28.5c9.8 0 17.7 7.9 17.7 17.7 0 4.3-1.6 8.3-4.2 11.4 0 0 13.9-16.6 27.5-32.7-5.6-10.8-15.3-19-27-22.7L32.6 34.8c3.3-3.8 8.1-6.3 13.5-6.3z"/>
                       <path fill="#fbbc04" d="M46.1 63.5c-9.8 0-17.7-7.9-17.7-17.7 0-4.3 1.5-8.3 4.1-11.3l-28 33.3c4.8 10.6 12.8 19.2 21 29.9l34.1-40.5c-3.3 3.9-8.1 6.3-13.5 6.3z"/>
                       <path fill="#34a853" d="M59.2 109.2c19.4-26.7 33.1-41.2 33.1-63.1 0-8.3-2-16.2-5.6-23.2L25.5 97.6c4.7 6.2 9.1 12.6 11.9 20.3 4.9 13.5 8.7 14.4 8.7 14.4s3.9-.9 8.7-14.4c.6-1.8 1.5-3.6 2.5-5.4l1.9-3.3z"/>
                     </svg>
-                    <span className="text-sm font-bold text-foreground">Google Maps</span>
+                    <span className="text-[10px] font-bold text-foreground">Google</span>
                   </div>
-                  <div className="p-2 bg-white rounded-lg shadow-sm">
-                    <QRCodeImage value={reviewUrl} size={MAIN_QR_SIZE} />
-                  </div>
-                  <p className="mt-2 text-xs text-primary font-semibold">
+                  <QRCodeImage value={reviewUrl} size={70} />
+                  <p className="mt-1 text-[9px] text-primary font-semibold">
                     {language === 'ar' ? 'امسح للتقييم' : 'Scan to rate'}
                   </p>
                 </div>
                 
-                {/* Right: Payment Details - Same order as Google Maps */}
-                <div className="text-center ps-4 flex flex-col items-center">
-                  {/* 1. Title with Icon */}
-                  <div className="flex items-center justify-center gap-2 mb-3">
+                {/* Right: Payment Details */}
+                <div className="text-center flex flex-col items-center">
+                  <div className="flex items-center justify-center gap-1 mb-1">
                     {(() => {
                       const iconUrl = getPaymentMethodIcon(primaryPayment.methodName);
                       if (iconUrl) {
@@ -965,47 +947,37 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
                           <img 
                             src={iconUrl} 
                             alt={primaryPayment.methodName}
-                            className="w-6 h-6 object-contain"
+                            className="w-4 h-4 object-contain"
                             crossOrigin="anonymous"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                              e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                            }}
                           />
                         );
                       }
-                      return <Wallet className="w-5 h-5 text-primary" />;
+                      return <Wallet className="w-3 h-3 text-primary" />;
                     })()}
-                    <Wallet className="w-5 h-5 text-primary hidden" />
-                    <span className="text-sm font-bold text-foreground">
-                      {primaryPayment.methodName || (language === 'ar' ? 'الدفع' : 'Payment')}
+                    <span className="text-[10px] font-bold text-foreground truncate">
+                      {primaryPayment.methodName || (language === 'ar' ? 'الدفع' : 'Pay')}
                     </span>
                   </div>
                   
-                  {/* 2. QR Code */}
                   {primaryPayment.paymentLink && (
-                    <div className="p-2 bg-white rounded-lg shadow-sm">
-                      <QRCodeImage value={primaryPayment.paymentLink} size={MAIN_QR_SIZE} />
-                    </div>
+                    <QRCodeImage value={primaryPayment.paymentLink} size={70} />
                   )}
                   
-                  {/* 3. Scan to Pay Label */}
                   {primaryPayment.paymentLink && (
-                    <p className="mt-2 text-xs text-primary font-semibold">
+                    <p className="mt-1 text-[9px] text-primary font-semibold">
                       {language === 'ar' ? 'امسح للدفع' : 'Scan to pay'}
                     </p>
                   )}
                   
-                  {/* 4. Account Owner & Number */}
                   {(primaryPayment.accountOwner || primaryPayment.accountNumber) && (
-                    <div className="mt-2 text-center">
+                    <div className="mt-1 text-center">
                       {primaryPayment.accountOwner && (
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-[9px] text-muted-foreground truncate max-w-full">
                           {primaryPayment.accountOwner}
                         </p>
                       )}
                       {primaryPayment.accountNumber && (
-                        <p className="text-xs font-mono text-foreground mt-0.5">
+                        <p className="text-[9px] font-mono text-foreground">
                           <span dir="ltr" style={{ unicodeBidi: 'embed' }}>{primaryPayment.accountNumber}</span>
                         </p>
                       )}
@@ -1016,52 +988,35 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
             ) : (
               /* Centered Layout (No payment details) */
               <div className="text-center flex flex-col items-center">
-                {/* Google Maps Logo */}
-                <div className="flex items-center justify-center gap-2 mb-3">
-                  <svg width="24" height="24" viewBox="0 0 92.3 132.3" xmlns="http://www.w3.org/2000/svg">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <svg width="16" height="16" viewBox="0 0 92.3 132.3" xmlns="http://www.w3.org/2000/svg">
                     <path fill="#1a73e8" d="M60.2 2.2C55.8.8 51 0 46.1 0 32 0 19.3 6.4 10.8 16.5l21.8 18.3L60.2 2.2z"/>
                     <path fill="#ea4335" d="M10.8 16.5C4.1 24.5 0 34.9 0 46.1c0 8.7 1.7 15.7 4.6 22l28-33.3-21.8-18.3z"/>
                     <path fill="#4285f4" d="M46.1 28.5c9.8 0 17.7 7.9 17.7 17.7 0 4.3-1.6 8.3-4.2 11.4 0 0 13.9-16.6 27.5-32.7-5.6-10.8-15.3-19-27-22.7L32.6 34.8c3.3-3.8 8.1-6.3 13.5-6.3z"/>
                     <path fill="#fbbc04" d="M46.1 63.5c-9.8 0-17.7-7.9-17.7-17.7 0-4.3 1.5-8.3 4.1-11.3l-28 33.3c4.8 10.6 12.8 19.2 21 29.9l34.1-40.5c-3.3 3.9-8.1 6.3-13.5 6.3z"/>
                     <path fill="#34a853" d="M59.2 109.2c19.4-26.7 33.1-41.2 33.1-63.1 0-8.3-2-16.2-5.6-23.2L25.5 97.6c4.7 6.2 9.1 12.6 11.9 20.3 4.9 13.5 8.7 14.4 8.7 14.4s3.9-.9 8.7-14.4c.6-1.8 1.5-3.6 2.5-5.4l1.9-3.3z"/>
                   </svg>
-                  <span className="text-base font-bold text-foreground">Google Maps</span>
+                  <span className="text-xs font-bold text-foreground">Google Maps</span>
                 </div>
                 
-                {/* QR Code */}
-                <div className="py-3">
-                  <div className="p-3 bg-white rounded-lg shadow-sm inline-block">
-                    <QRCodeImage value={reviewUrl} size={MAIN_QR_SIZE} />
-                  </div>
-                  <p className="mt-2 text-sm font-semibold text-primary">
-                    {language === 'ar' 
-                      ? 'امسح للتقييم على جوجل' 
-                      : 'Scan to rate on Google'}
-                  </p>
-                </div>
+                <QRCodeImage value={reviewUrl} size={90} />
+                <p className="mt-1 text-[10px] font-semibold text-primary">
+                  {language === 'ar' ? 'امسح للتقييم' : 'Scan to rate'}
+                </p>
               </div>
             )}
           </div>
           
-          {/* Footer - Smaller Promo QR */}
-          <div className="bg-gray-50 px-5 py-4">
-            <div className="flex flex-col items-center justify-center text-center gap-2">
-              <p className="text-xs text-muted-foreground font-medium">
-                {language === 'ar' 
-                  ? 'لطلب استيكر كهذا' 
-                  : 'To order a sticker like this'}
-              </p>
-              <div className="flex items-center justify-center gap-4">
-                <div className="text-xs">
-                  <p className="font-bold text-foreground">
-                    {language === 'ar' ? 'تواصل واتساب' : 'WhatsApp us'}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    <span dir="ltr" style={{ unicodeBidi: 'embed' }}>{adminWhatsApp || '+20 151 416 7733'}</span>
-                  </p>
-                </div>
-                <QRCodeImage value={whatsappUrl} size={PROMO_QR_SIZE} />
+          {/* Footer - Promo - compact */}
+          <div className="bg-gray-50 px-3 py-2 flex-shrink-0">
+            <div className="flex items-center justify-center gap-3">
+              <div className="text-[9px] text-center">
+                <p className="text-muted-foreground">{language === 'ar' ? 'لطلب استيكر' : 'Order sticker'}</p>
+                <p className="font-bold text-foreground">
+                  <span dir="ltr" style={{ unicodeBidi: 'embed' }}>{adminWhatsApp || '+20 151 416 7733'}</span>
+                </p>
               </div>
+              <QRCodeImage value={whatsappUrl} size={50} />
             </div>
           </div>
         </div>
