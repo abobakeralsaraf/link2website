@@ -138,13 +138,21 @@ function Base64Image({
   );
 }
 
-// Sticker dimension presets
+// Sticker dimension presets with exact 1:2 aspect ratio (width:height)
 export type StickerSize = 'small' | 'medium' | 'large';
 
-export const STICKER_PRESETS: Record<StickerSize, { width: number; heroHeight: number; pdfWidth: number; pdfHeight: number; label: string; labelAr: string }> = {
-  small: { width: 400, heroHeight: 140, pdfWidth: 80, pdfHeight: 160, label: 'Small (8×16 cm)', labelAr: 'صغير (8×16 سم)' },
-  medium: { width: 500, heroHeight: 180, pdfWidth: 100, pdfHeight: 180, label: 'Medium (10×18 cm)', labelAr: 'متوسط (10×18 سم)' },
-  large: { width: 600, heroHeight: 220, pdfWidth: 120, pdfHeight: 200, label: 'Large (12×20 cm)', labelAr: 'كبير (12×20 سم)' },
+export const STICKER_PRESETS: Record<StickerSize, { 
+  width: number; 
+  heroHeight: number; 
+  pdfWidth: number; 
+  pdfHeight: number; 
+  reviewsPerRow: number;
+  label: string; 
+  labelAr: string 
+}> = {
+  small: { width: 320, heroHeight: 160, pdfWidth: 80, pdfHeight: 160, reviewsPerRow: 2, label: 'Small (8×16 cm)', labelAr: 'صغير (8×16 سم)' },
+  medium: { width: 400, heroHeight: 200, pdfWidth: 100, pdfHeight: 200, reviewsPerRow: 2, label: 'Medium (10×20 cm)', labelAr: 'متوسط (10×20 سم)' },
+  large: { width: 480, heroHeight: 240, pdfWidth: 120, pdfHeight: 240, reviewsPerRow: 2, label: 'Large (12×24 cm)', labelAr: 'كبير (12×24 سم)' },
 };
 
 export type PrintableStickerProps = {
@@ -228,7 +236,7 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
   
   // Dimension controls
   const [stickerSize, setStickerSize] = useState<StickerSize>('medium');
-  const [reviewCount, setReviewCount] = useState<number>(2);
+  const [reviewCount, setReviewCount] = useState<number>(4);
   
   const currentPreset = STICKER_PRESETS[stickerSize];
   
@@ -719,9 +727,9 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
             onChange={(e) => setReviewCount(Number(e.target.value))}
             className="px-3 py-1.5 border rounded-md bg-background text-foreground text-sm"
           >
-            <option value={1}>{language === 'ar' ? 'تعليق واحد' : '1 Review'}</option>
             <option value={2}>{language === 'ar' ? 'تعليقان' : '2 Reviews'}</option>
-            <option value={3}>{language === 'ar' ? '3 تعليقات' : '3 Reviews'}</option>
+            <option value={4}>{language === 'ar' ? '4 تعليقات' : '4 Reviews'}</option>
+            <option value={6}>{language === 'ar' ? '6 تعليقات' : '6 Reviews'}</option>
           </select>
         </div>
       </div>
@@ -858,49 +866,53 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
             </div>
           )}
           
-          {/* Customer Reviews Section - Hidden if no reviews pass filter */}
+          {/* Customer Reviews Section - Grid layout for compact display */}
           {topReviews.length > 0 && (
-            <div className="px-5 py-3 space-y-3 bg-white">
-              {topReviews.map((review, index) => (
-                <div key={index} className="relative bg-gray-50/50 rounded-lg p-4">
-                  <Quote className="absolute top-3 right-3 w-5 h-5 text-primary/20" />
-                  <div className="flex items-center gap-3 mb-2">
-                    {review.authorPhoto ? (
-                      <img
-                        src={review.authorPhoto}
-                        alt={review.authorName}
-                        crossOrigin="anonymous"
-                        referrerPolicy="no-referrer"
-                        className="block w-8 h-8 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                        <User className="w-4 h-4 text-primary" />
-                      </div>
-                    )}
-                    <span className="text-sm font-semibold text-foreground">{review.authorName}</span>
-                    <div className="flex items-center gap-0.5 ms-auto">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          className={`w-4 h-4 ${i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/30'}`}
+            <div className="px-4 py-3 bg-white">
+              <div 
+                className="grid gap-2"
+                style={{ gridTemplateColumns: `repeat(${currentPreset.reviewsPerRow}, 1fr)` }}
+              >
+                {topReviews.map((review, index) => (
+                  <div key={index} className="relative bg-gray-50/50 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      {review.authorPhoto ? (
+                        <img
+                          src={review.authorPhoto}
+                          alt={review.authorName}
+                          crossOrigin="anonymous"
+                          referrerPolicy="no-referrer"
+                          className="block w-6 h-6 rounded-full object-cover flex-shrink-0"
                         />
-                      ))}
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                          <User className="w-3 h-3 text-primary" />
+                        </div>
+                      )}
+                      <span className="text-xs font-semibold text-foreground truncate flex-1">{review.authorName}</span>
+                      <div className="flex items-center gap-0.5 flex-shrink-0">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`w-3 h-3 ${i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-muted-foreground/30'}`}
+                          />
+                        ))}
+                      </div>
                     </div>
+                    <p 
+                      className="text-xs text-muted-foreground leading-tight"
+                      style={{ 
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
+                      }}
+                    >
+                      {language === 'ar' && review.textAr ? review.textAr : review.text}
+                    </p>
                   </div>
-                  <p 
-                    className="text-xs text-muted-foreground leading-relaxed line-clamp-2"
-                    style={{ 
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden'
-                    }}
-                  >
-                    {language === 'ar' && review.textAr ? review.textAr : review.text}
-                  </p>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
           
