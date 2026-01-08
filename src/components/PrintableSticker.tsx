@@ -138,6 +138,15 @@ function Base64Image({
   );
 }
 
+// Sticker dimension presets
+export type StickerSize = 'small' | 'medium' | 'large';
+
+export const STICKER_PRESETS: Record<StickerSize, { width: number; heroHeight: number; pdfWidth: number; pdfHeight: number; label: string; labelAr: string }> = {
+  small: { width: 400, heroHeight: 140, pdfWidth: 80, pdfHeight: 160, label: 'Small (8×16 cm)', labelAr: 'صغير (8×16 سم)' },
+  medium: { width: 500, heroHeight: 180, pdfWidth: 100, pdfHeight: 180, label: 'Medium (10×18 cm)', labelAr: 'متوسط (10×18 سم)' },
+  large: { width: 600, heroHeight: 220, pdfWidth: 120, pdfHeight: 200, label: 'Large (12×20 cm)', labelAr: 'كبير (12×20 سم)' },
+};
+
 export type PrintableStickerProps = {
   business: BusinessData;
   paymentMethods?: PaymentMethod[];
@@ -217,6 +226,12 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
   const [paymentMethodTypes, setPaymentMethodTypes] = useState<PaymentMethodType[]>([]);
   const [iconBase64Map, setIconBase64Map] = useState<Record<string, string>>({});
   
+  // Dimension controls
+  const [stickerSize, setStickerSize] = useState<StickerSize>('medium');
+  const [reviewCount, setReviewCount] = useState<number>(2);
+  
+  const currentPreset = STICKER_PRESETS[stickerSize];
+  
   // Fetch payment method types from database
   useEffect(() => {
     const fetchPaymentMethods = async () => {
@@ -288,7 +303,7 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
   const heroImage = business.photos?.[0];
   const displayPhotos = business.photos?.slice(1, 4) || [];
   // Smart review filtering: 4-5 star only, no negative keywords (using centralized utility)
-  const filteredReviews = filterPositiveReviews(business.reviews, language).slice(0, 2);
+  const filteredReviews = filterPositiveReviews(business.reviews, language).slice(0, reviewCount);
   const topReviews = filteredReviews.length > 0 ? filteredReviews : [];
 
   const getProxyUrl = useCallback((src: string) => {
@@ -373,9 +388,9 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
 
       document.body.removeChild(stage);
 
-      // Create PDF with 5:9 aspect ratio
-      const pdfWidth = 100;
-      const pdfHeight = 180;
+      // Create PDF with selected dimensions
+      const pdfWidth = currentPreset.pdfWidth;
+      const pdfHeight = currentPreset.pdfHeight;
       
       const pdf = new jsPDF({
         orientation: 'portrait',
@@ -439,7 +454,7 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
       document.body.removeChild(stage);
       throw error;
     }
-  }, [getProxyUrl, language]);
+  }, [getProxyUrl, language, currentPreset]);
 
   const handleDownloadPdf = useCallback(async () => {
     if (!stickerRef.current) return;
@@ -521,10 +536,9 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
 
       document.body.removeChild(stage);
 
-      // Create PDF with 5:9 aspect ratio (width:height)
-      // Using mm units, 100mm x 180mm (50cm x 90cm scaled)
-      const pdfWidth = 100;
-      const pdfHeight = 180;
+      // Create PDF with selected dimensions
+      const pdfWidth = currentPreset.pdfWidth;
+      const pdfHeight = currentPreset.pdfHeight;
       
       const pdf = new jsPDF({
         orientation: 'portrait',
@@ -565,7 +579,7 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
       setIsGeneratingPdf(false);
       actionLockRef.current = null;
     }
-  }, [name, language, getProxyUrl]);
+  }, [name, language, getProxyUrl, currentPreset]);
 
   const handleDownload = useCallback(async () => {
     if (!stickerRef.current) return;
@@ -675,6 +689,43 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
 
   return (
     <div className="space-y-6">
+      {/* Dimension Controls */}
+      <div className="flex flex-wrap gap-4 justify-center items-center print:hidden bg-muted/30 p-4 rounded-lg">
+        {/* Size Selector */}
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-foreground">
+            {language === 'ar' ? 'حجم الاستيكر:' : 'Sticker Size:'}
+          </label>
+          <select
+            value={stickerSize}
+            onChange={(e) => setStickerSize(e.target.value as StickerSize)}
+            className="px-3 py-1.5 border rounded-md bg-background text-foreground text-sm"
+          >
+            {Object.entries(STICKER_PRESETS).map(([key, preset]) => (
+              <option key={key} value={key}>
+                {language === 'ar' ? preset.labelAr : preset.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        {/* Review Count Selector */}
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-foreground">
+            {language === 'ar' ? 'عدد التعليقات:' : 'Reviews:'}
+          </label>
+          <select
+            value={reviewCount}
+            onChange={(e) => setReviewCount(Number(e.target.value))}
+            className="px-3 py-1.5 border rounded-md bg-background text-foreground text-sm"
+          >
+            <option value={1}>{language === 'ar' ? 'تعليق واحد' : '1 Review'}</option>
+            <option value={2}>{language === 'ar' ? 'تعليقان' : '2 Reviews'}</option>
+            <option value={3}>{language === 'ar' ? '3 تعليقات' : '3 Reviews'}</option>
+          </select>
+        </div>
+      </div>
+
       {/* Control Buttons */}
       <div className="flex flex-wrap gap-3 justify-center print:hidden">
         <Button
@@ -727,20 +778,24 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
         </Button>
       </div>
       
-      {/* Printable Sticker - Wider layout (500px, no fixed aspect ratio) */}
+      {/* Printable Sticker - Dynamic width based on selected size */}
       <div className="flex justify-center">
         <div
           ref={stickerRef}
           id="printable-sticker"
-          className="w-[500px] bg-white overflow-hidden shadow-lg rounded-lg"
+          className="bg-white overflow-hidden shadow-lg rounded-lg"
           style={{ 
+            width: `${currentPreset.width}px`,
             fontFamily: language === 'ar' ? 'Tajawal, sans-serif' : 'Inter, sans-serif'
           }}
           dir={language === 'ar' ? 'rtl' : 'ltr'}
         >
-          {/* Hero Image Header */}
+          {/* Hero Image Header - Dynamic height based on selected size */}
           {heroImage ? (
-            <div className="relative h-48 overflow-hidden">
+            <div 
+              className="relative overflow-hidden"
+              style={{ height: `${currentPreset.heroHeight}px` }}
+            >
               <img 
                 src={heroImage} 
                 alt={name}
@@ -833,7 +888,15 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
                       ))}
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed" style={{ height: 'auto', overflow: 'visible' }}>
+                  <p 
+                    className="text-xs text-muted-foreground leading-relaxed line-clamp-2"
+                    style={{ 
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden'
+                    }}
+                  >
                     {language === 'ar' && review.textAr ? review.textAr : review.text}
                   </p>
                 </div>
