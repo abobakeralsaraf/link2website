@@ -378,9 +378,10 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
 
       // Ultra high-quality capture - scale to achieve 10000px width
       const targetWidth = STICKER_CONFIG.exportWidth;
+      const targetHeight = STICKER_CONFIG.exportHeight;
       const captureScale = targetWidth / baseW;
       
-      const canvas = await html2canvas(clone, {
+      const rawCanvas = await html2canvas(clone, {
         scale: captureScale,
         backgroundColor: '#ffffff',
         useCORS: true,
@@ -389,6 +390,39 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
       });
 
       document.body.removeChild(stage);
+
+      // Force exact 1:2 aspect ratio by creating a new canvas
+      const finalCanvas = document.createElement('canvas');
+      finalCanvas.width = targetWidth;
+      finalCanvas.height = targetHeight;
+      const finalCtx = finalCanvas.getContext('2d');
+      
+      if (finalCtx) {
+        // Fill with white background
+        finalCtx.fillStyle = '#ffffff';
+        finalCtx.fillRect(0, 0, targetWidth, targetHeight);
+        
+        // Calculate how to fit the raw canvas into the target canvas
+        const rawRatio = rawCanvas.width / rawCanvas.height;
+        const targetRatio = targetWidth / targetHeight; // 0.5 for 1:2
+        
+        let drawWidth = targetWidth;
+        let drawHeight = targetHeight;
+        let drawX = 0;
+        let drawY = 0;
+        
+        if (rawRatio > targetRatio) {
+          // Raw is wider, fit to width and center vertically
+          drawHeight = targetWidth / rawRatio;
+          drawY = (targetHeight - drawHeight) / 2;
+        } else {
+          // Raw is taller, fit to height and center horizontally
+          drawWidth = targetHeight * rawRatio;
+          drawX = (targetWidth - drawWidth) / 2;
+        }
+        
+        finalCtx.drawImage(rawCanvas, drawX, drawY, drawWidth, drawHeight);
+      }
 
       // Create PDF with fixed 1:2 aspect ratio (100mm × 200mm)
       const pdfWidth = STICKER_CONFIG.pdfWidth;
@@ -400,26 +434,10 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
         format: [pdfWidth, pdfHeight],
       });
 
-      const imgData = canvas.toDataURL('image/png');
+      const imgData = finalCanvas.toDataURL('image/png');
       
-      // Calculate dimensions to fit while maintaining aspect ratio
-      const canvasRatio = canvas.width / canvas.height;
-      const pdfRatio = pdfWidth / pdfHeight;
-      
-      let imgWidth = pdfWidth;
-      let imgHeight = pdfHeight;
-      let offsetX = 0;
-      let offsetY = 0;
-      
-      if (canvasRatio > pdfRatio) {
-        imgHeight = pdfWidth / canvasRatio;
-        offsetY = (pdfHeight - imgHeight) / 2;
-      } else {
-        imgWidth = pdfHeight * canvasRatio;
-        offsetX = (pdfWidth - imgWidth) / 2;
-      }
-
-      pdf.addImage(imgData, 'PNG', offsetX, offsetY, imgWidth, imgHeight);
+      // Image fills the entire PDF (exact 1:2 ratio)
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
 
       // Convert PDF to ArrayBuffer
       const pdfArrayBuffer = pdf.output('arraybuffer');
@@ -529,9 +547,10 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
 
       // Ultra high-quality capture - scale to achieve 10000px width
       const targetWidth = STICKER_CONFIG.exportWidth;
+      const targetHeight = STICKER_CONFIG.exportHeight;
       const captureScale = targetWidth / baseW;
       
-      const canvas = await html2canvas(clone, {
+      const rawCanvas = await html2canvas(clone, {
         scale: captureScale,
         backgroundColor: '#ffffff',
         useCORS: true,
@@ -540,6 +559,37 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
       });
 
       document.body.removeChild(stage);
+
+      // Force exact 1:2 aspect ratio by creating a new canvas
+      const finalCanvas = document.createElement('canvas');
+      finalCanvas.width = targetWidth;
+      finalCanvas.height = targetHeight;
+      const finalCtx = finalCanvas.getContext('2d');
+      
+      if (finalCtx) {
+        // Fill with white background
+        finalCtx.fillStyle = '#ffffff';
+        finalCtx.fillRect(0, 0, targetWidth, targetHeight);
+        
+        // Calculate how to fit the raw canvas into the target canvas
+        const rawRatio = rawCanvas.width / rawCanvas.height;
+        const targetRatio = targetWidth / targetHeight;
+        
+        let drawWidth = targetWidth;
+        let drawHeight = targetHeight;
+        let drawX = 0;
+        let drawY = 0;
+        
+        if (rawRatio > targetRatio) {
+          drawHeight = targetWidth / rawRatio;
+          drawY = (targetHeight - drawHeight) / 2;
+        } else {
+          drawWidth = targetHeight * rawRatio;
+          drawX = (targetWidth - drawWidth) / 2;
+        }
+        
+        finalCtx.drawImage(rawCanvas, drawX, drawY, drawWidth, drawHeight);
+      }
 
       // Create PDF with fixed 1:2 aspect ratio (100mm × 200mm)
       const pdfWidth = STICKER_CONFIG.pdfWidth;
@@ -551,28 +601,10 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
         format: [pdfWidth, pdfHeight],
       });
 
-      const imgData = canvas.toDataURL('image/png');
+      const imgData = finalCanvas.toDataURL('image/png');
       
-      // Calculate dimensions to fit while maintaining aspect ratio
-      const canvasRatio = canvas.width / canvas.height;
-      const pdfRatio = pdfWidth / pdfHeight;
-      
-      let imgWidth = pdfWidth;
-      let imgHeight = pdfHeight;
-      let offsetX = 0;
-      let offsetY = 0;
-      
-      if (canvasRatio > pdfRatio) {
-        // Canvas is wider, fit to width
-        imgHeight = pdfWidth / canvasRatio;
-        offsetY = (pdfHeight - imgHeight) / 2;
-      } else {
-        // Canvas is taller, fit to height
-        imgWidth = pdfHeight * canvasRatio;
-        offsetX = (pdfWidth - imgWidth) / 2;
-      }
-
-      pdf.addImage(imgData, 'PNG', offsetX, offsetY, imgWidth, imgHeight);
+      // Image fills the entire PDF (exact 1:2 ratio)
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
 
       pdf.save(`${name.replace(/\s+/g, '-').toLowerCase()}-sticker.pdf`);
 
