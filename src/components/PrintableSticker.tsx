@@ -138,19 +138,15 @@ function Base64Image({
   );
 }
 
-// Sticker dimension presets with exact 1:2 aspect ratio (width:height)
-export type StickerSize = 'small' | 'medium' | 'large';
-
-export const STICKER_PRESETS: Record<StickerSize, { 
-  width: number; 
-  aspectRatio: number; // height = width * aspectRatio
-  pdfWidth: number; 
-  label: string; 
-  labelAr: string 
-}> = {
-  small: { width: 320, aspectRatio: 2, pdfWidth: 80, label: 'Small (8×16 cm)', labelAr: 'صغير (8×16 سم)' },
-  medium: { width: 400, aspectRatio: 2, pdfWidth: 100, label: 'Medium (10×20 cm)', labelAr: 'متوسط (10×20 سم)' },
-  large: { width: 480, aspectRatio: 2, pdfWidth: 120, label: 'Large (12×24 cm)', labelAr: 'كبير (12×24 سم)' },
+// Fixed sticker dimensions with strict 1:2 aspect ratio (width:height)
+// Export resolution: 10000px × 20000px
+export const STICKER_CONFIG = {
+  displayWidth: 400, // Display width in pixels
+  aspectRatio: 2, // height = width * 2
+  exportWidth: 10000, // Export width in pixels (10k)
+  exportHeight: 20000, // Export height in pixels (20k)
+  pdfWidth: 100, // PDF width in mm
+  pdfHeight: 200, // PDF height in mm
 };
 
 export type PrintableStickerProps = {
@@ -232,11 +228,8 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
   const [paymentMethodTypes, setPaymentMethodTypes] = useState<PaymentMethodType[]>([]);
   const [iconBase64Map, setIconBase64Map] = useState<Record<string, string>>({});
   
-  // Dimension controls
-  const [stickerSize, setStickerSize] = useState<StickerSize>('medium');
+  // Review count control
   const [reviewCount, setReviewCount] = useState<number>(4);
-  
-  const currentPreset = STICKER_PRESETS[stickerSize];
   
   // Fetch payment method types from database
   useEffect(() => {
@@ -383,9 +376,12 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
         new Promise<void>((resolve) => setTimeout(resolve, 6000)),
       ]);
 
-      // High-quality capture
+      // Ultra high-quality capture - scale to achieve 10000px width
+      const targetWidth = STICKER_CONFIG.exportWidth;
+      const captureScale = targetWidth / baseW;
+      
       const canvas = await html2canvas(clone, {
-        scale: 4,
+        scale: captureScale,
         backgroundColor: '#ffffff',
         useCORS: true,
         allowTaint: true,
@@ -394,9 +390,9 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
 
       document.body.removeChild(stage);
 
-      // Create PDF with selected dimensions (1:2 aspect ratio)
-      const pdfWidth = currentPreset.pdfWidth;
-      const pdfHeight = pdfWidth * currentPreset.aspectRatio;
+      // Create PDF with fixed 1:2 aspect ratio (100mm × 200mm)
+      const pdfWidth = STICKER_CONFIG.pdfWidth;
+      const pdfHeight = STICKER_CONFIG.pdfHeight;
       
       const pdf = new jsPDF({
         orientation: 'portrait',
@@ -460,7 +456,7 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
       document.body.removeChild(stage);
       throw error;
     }
-  }, [getProxyUrl, language, currentPreset]);
+  }, [getProxyUrl, language]);
 
   const handleDownloadPdf = useCallback(async () => {
     if (!stickerRef.current) return;
@@ -531,20 +527,23 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
         new Promise<void>((resolve) => setTimeout(resolve, 6000)),
       ]);
 
-      // High-quality capture with scale 4 and CORS settings for QR codes
+      // Ultra high-quality capture - scale to achieve 10000px width
+      const targetWidth = STICKER_CONFIG.exportWidth;
+      const captureScale = targetWidth / baseW;
+      
       const canvas = await html2canvas(clone, {
-        scale: 4,
+        scale: captureScale,
         backgroundColor: '#ffffff',
         useCORS: true,
         allowTaint: true,
-        logging: true,
+        logging: false,
       });
 
       document.body.removeChild(stage);
 
-      // Create PDF with selected dimensions (1:2 aspect ratio)
-      const pdfWidth = currentPreset.pdfWidth;
-      const pdfHeight = pdfWidth * currentPreset.aspectRatio;
+      // Create PDF with fixed 1:2 aspect ratio (100mm × 200mm)
+      const pdfWidth = STICKER_CONFIG.pdfWidth;
+      const pdfHeight = STICKER_CONFIG.pdfHeight;
       
       const pdf = new jsPDF({
         orientation: 'portrait',
@@ -585,7 +584,7 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
       setIsGeneratingPdf(false);
       actionLockRef.current = null;
     }
-  }, [name, language, getProxyUrl, currentPreset]);
+  }, [name, language, getProxyUrl]);
 
   const handleDownload = useCallback(async () => {
     if (!stickerRef.current) return;
@@ -695,27 +694,8 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
 
   return (
     <div className="space-y-6">
-      {/* Dimension Controls */}
+      {/* Review Count Control */}
       <div className="flex flex-wrap gap-4 justify-center items-center print:hidden bg-muted/30 p-4 rounded-lg">
-        {/* Size Selector */}
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-foreground">
-            {language === 'ar' ? 'حجم الاستيكر:' : 'Sticker Size:'}
-          </label>
-          <select
-            value={stickerSize}
-            onChange={(e) => setStickerSize(e.target.value as StickerSize)}
-            className="px-3 py-1.5 border rounded-md bg-background text-foreground text-sm"
-          >
-            {Object.entries(STICKER_PRESETS).map(([key, preset]) => (
-              <option key={key} value={key}>
-                {language === 'ar' ? preset.labelAr : preset.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        
-        {/* Review Count Selector */}
         <div className="flex items-center gap-2">
           <label className="text-sm font-medium text-foreground">
             {language === 'ar' ? 'عدد التعليقات:' : 'Reviews:'}
@@ -729,6 +709,9 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
             <option value={4}>{language === 'ar' ? '4 تعليقات' : '4 Reviews'}</option>
             <option value={6}>{language === 'ar' ? '6 تعليقات' : '6 Reviews'}</option>
           </select>
+        </div>
+        <div className="text-xs text-muted-foreground">
+          {language === 'ar' ? 'الدقة: 10000×20000 بكسل (نسبة 1:2)' : 'Resolution: 10000×20000px (1:2 ratio)'}
         </div>
       </div>
 
@@ -784,15 +767,15 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
         </Button>
       </div>
       
-      {/* Printable Sticker - Fixed aspect ratio container */}
+      {/* Printable Sticker - Fixed 1:2 aspect ratio container */}
       <div className="flex justify-center">
         <div
           ref={stickerRef}
           id="printable-sticker"
           className="bg-white shadow-lg rounded-lg flex flex-col"
           style={{ 
-            width: `${currentPreset.width}px`,
-            height: `${currentPreset.width * currentPreset.aspectRatio}px`,
+            width: `${STICKER_CONFIG.displayWidth}px`,
+            height: `${STICKER_CONFIG.displayWidth * STICKER_CONFIG.aspectRatio}px`,
             fontFamily: language === 'ar' ? 'Tajawal, sans-serif' : 'Inter, sans-serif',
             overflow: 'hidden'
           }}
