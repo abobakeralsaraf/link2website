@@ -2,7 +2,6 @@ import { useRef, useCallback, useState, useEffect } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import * as pdfjsLib from 'pdfjs-dist';
 import type { BusinessData, PaymentMethod } from '@/lib/types';
 import { filterPositiveReviews } from '@/lib/reviewUtils';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -11,9 +10,6 @@ import { Button } from '@/components/ui/button';
 import { Download, Printer, Star, Quote, User, Loader2, FileText, CreditCard, Wallet, Image } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-
-// Configure PDF.js to work without external worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = '';
 
 // QR Code component that renders as a Base64 image for PDF compatibility
 function QRCodeImage({ value, size, className }: { value: string; size: number; className?: string }) {
@@ -310,13 +306,13 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
     return `${base}/functions/v1/image-proxy?url=${encodeURIComponent(src)}`;
   }, []);
 
-  // Generate PDF and convert to WebP image
-  const generatePdfAsWebp = useCallback(async (): Promise<string | null> => {
+  // Generate high-resolution 10000×20000px image (exact 1:2, fills the whole canvas)
+  const generateStickerImage = useCallback(async (): Promise<string | null> => {
     if (!stickerRef.current) return null;
 
     // Wait for QR codes to render
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
     const element = stickerRef.current;
     const baseW = element.offsetWidth;
     const baseH = element.offsetHeight;
@@ -371,16 +367,15 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
                 });
               }
             } catch {}
-          }),
+          })
         ),
         new Promise<void>((resolve) => setTimeout(resolve, 6000)),
       ]);
 
-      // Ultra high-quality capture - scale to achieve 10000px width
       const targetWidth = STICKER_CONFIG.exportWidth;
       const targetHeight = STICKER_CONFIG.exportHeight;
       const captureScale = targetWidth / baseW;
-      
+
       const rawCanvas = await html2canvas(clone, {
         scale: captureScale,
         backgroundColor: '#ffffff',
@@ -391,85 +386,27 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
 
       document.body.removeChild(stage);
 
-      // Force exact 1:2 aspect ratio by creating a new canvas
+      // Draw as "cover" so the result fills the whole 10000×20000 canvas (no white margins)
       const finalCanvas = document.createElement('canvas');
       finalCanvas.width = targetWidth;
       finalCanvas.height = targetHeight;
-      const finalCtx = finalCanvas.getContext('2d');
-      
-      if (finalCtx) {
-        // Fill with white background
-        finalCtx.fillStyle = '#ffffff';
-        finalCtx.fillRect(0, 0, targetWidth, targetHeight);
-        
-        // Calculate how to fit the raw canvas into the target canvas
-        const rawRatio = rawCanvas.width / rawCanvas.height;
-        const targetRatio = targetWidth / targetHeight; // 0.5 for 1:2
-        
-        let drawWidth = targetWidth;
-        let drawHeight = targetHeight;
-        let drawX = 0;
-        let drawY = 0;
-        
-        if (rawRatio > targetRatio) {
-          // Raw is wider, fit to width and center vertically
-          drawHeight = targetWidth / rawRatio;
-          drawY = (targetHeight - drawHeight) / 2;
-        } else {
-          // Raw is taller, fit to height and center horizontally
-          drawWidth = targetHeight * rawRatio;
-          drawX = (targetWidth - drawWidth) / 2;
-        }
-        
-        finalCtx.drawImage(rawCanvas, drawX, drawY, drawWidth, drawHeight);
-      }
-
-      // Create PDF with fixed 1:2 aspect ratio (100mm × 200mm)
-      const pdfWidth = STICKER_CONFIG.pdfWidth;
-      const pdfHeight = STICKER_CONFIG.pdfHeight;
-      
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: [pdfWidth, pdfHeight],
-      });
-
-      const imgData = finalCanvas.toDataURL('image/png');
-      
-      // Image fills the entire PDF (exact 1:2 ratio)
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-
-      // Convert PDF to ArrayBuffer
-      const pdfArrayBuffer = pdf.output('arraybuffer');
-      
-      // Load PDF with pdf.js
-      const pdfDoc = await pdfjsLib.getDocument({ data: pdfArrayBuffer } as any).promise;
-      const page = await pdfDoc.getPage(1);
-      
-      // Render at high resolution (scale 3 for quality)
-      const viewport = page.getViewport({ scale: 3 });
-      
-      const renderCanvas = document.createElement('canvas');
-      renderCanvas.width = viewport.width;
-      renderCanvas.height = viewport.height;
-      const ctx = renderCanvas.getContext('2d');
-      
+      const ctx = finalCanvas.getContext('2d');
       if (!ctx) return null;
-      
-      await page.render({
-        canvasContext: ctx,
-        viewport: viewport,
-      }).promise;
 
-      // Convert to WebP
-      const webpDataUrl = renderCanvas.toDataURL('image/webp', 0.92);
-      
-      // Check if WebP is supported, fallback to PNG
-      if (webpDataUrl.startsWith('data:image/webp')) {
-        return webpDataUrl;
-      }
-      return renderCanvas.toDataURL('image/png');
-      
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, targetWidth, targetHeight);
+
+      const scale = Math.max(targetWidth / rawCanvas.width, targetHeight / rawCanvas.height);
+      const drawW = rawCanvas.width * scale;
+      const drawH = rawCanvas.height * scale;
+      const drawX = (targetWidth - drawW) / 2;
+      const drawY = (targetHeight - drawH) / 2;
+
+      ctx.drawImage(rawCanvas, drawX, drawY, drawW, drawH);
+
+      const webp = finalCanvas.toDataURL('image/webp', 0.92);
+      if (webp.startsWith('data:image/webp')) return webp;
+      return finalCanvas.toDataURL('image/png');
     } catch (error) {
       document.body.removeChild(stage);
       throw error;
@@ -560,35 +497,23 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
 
       document.body.removeChild(stage);
 
-      // Force exact 1:2 aspect ratio by creating a new canvas
+      // Force exact 1:2 aspect ratio and fill the whole canvas (cover)
       const finalCanvas = document.createElement('canvas');
       finalCanvas.width = targetWidth;
       finalCanvas.height = targetHeight;
       const finalCtx = finalCanvas.getContext('2d');
-      
+
       if (finalCtx) {
-        // Fill with white background
         finalCtx.fillStyle = '#ffffff';
         finalCtx.fillRect(0, 0, targetWidth, targetHeight);
-        
-        // Calculate how to fit the raw canvas into the target canvas
-        const rawRatio = rawCanvas.width / rawCanvas.height;
-        const targetRatio = targetWidth / targetHeight;
-        
-        let drawWidth = targetWidth;
-        let drawHeight = targetHeight;
-        let drawX = 0;
-        let drawY = 0;
-        
-        if (rawRatio > targetRatio) {
-          drawHeight = targetWidth / rawRatio;
-          drawY = (targetHeight - drawHeight) / 2;
-        } else {
-          drawWidth = targetHeight * rawRatio;
-          drawX = (targetWidth - drawWidth) / 2;
-        }
-        
-        finalCtx.drawImage(rawCanvas, drawX, drawY, drawWidth, drawHeight);
+
+        const scale = Math.max(targetWidth / rawCanvas.width, targetHeight / rawCanvas.height);
+        const drawW = rawCanvas.width * scale;
+        const drawH = rawCanvas.height * scale;
+        const drawX = (targetWidth - drawW) / 2;
+        const drawY = (targetHeight - drawH) / 2;
+
+        finalCtx.drawImage(rawCanvas, drawX, drawY, drawW, drawH);
       }
 
       // Create PDF with fixed 1:2 aspect ratio (100mm × 200mm)
@@ -625,7 +550,7 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
     actionLockRef.current = 'download';
     setIsDownloading(true);
     try {
-      const dataUrl = await generatePdfAsWebp();
+      const dataUrl = await generateStickerImage();
       if (!dataUrl) return;
 
       const link = document.createElement('a');
@@ -641,7 +566,7 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
       setIsDownloading(false);
       actionLockRef.current = null;
     }
-  }, [name, language, generatePdfAsWebp]);
+  }, [name, language, generateStickerImage]);
 
   const handlePrint = useCallback(async () => {
     if (actionLockRef.current) return;
@@ -649,7 +574,7 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
     actionLockRef.current = 'print';
     setIsPrinting(true);
     try {
-      const dataUrl = await generatePdfAsWebp();
+      const dataUrl = await generateStickerImage();
       if (!dataUrl) return;
 
       const printWindow = window.open('', '_blank');
@@ -695,7 +620,7 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
       setIsPrinting(false);
       actionLockRef.current = null;
     }
-  }, [language, name, generatePdfAsWebp]);
+  }, [language, name, generateStickerImage]);
 
   const renderStars = (rating: number) => {
     const fullStars = Math.floor(rating);
