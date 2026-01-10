@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState, useEffect } from 'react';
+import { useRef, useCallback, useState, useEffect, useId } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -13,33 +13,34 @@ import { supabase } from '@/integrations/supabase/client';
 
 // QR Code component that renders as a Base64 image for PDF compatibility
 function QRCodeImage({ value, size, className }: { value: string; size: number; className?: string }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerId = useId();
   const [imgSrc, setImgSrc] = useState<string>('');
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // Convert canvas to data URL after render with sufficient delay
     const timer = setTimeout(() => {
-      if (canvasRef.current) {
-        try {
-          const dataUrl = canvasRef.current.toDataURL('image/png');
+      try {
+        const el = document.getElementById(containerId);
+        const canvas = el?.querySelector('canvas') as HTMLCanvasElement | null;
+        if (canvas) {
+          const dataUrl = canvas.toDataURL('image/png');
           setImgSrc(dataUrl);
-          setIsReady(true);
-        } catch (e) {
-          console.error('QR conversion error:', e);
-          setIsReady(true);
         }
+      } catch (e) {
+        console.error('QR conversion error:', e);
+      } finally {
+        setIsReady(true);
       }
-    }, 200);
+    }, 250);
+
     return () => clearTimeout(timer);
-  }, [value, size]);
+  }, [containerId, value, size]);
 
   return (
     <div className={className} style={{ width: size, height: size, position: 'relative' }}>
-      {/* Hidden canvas for QR generation - always render for data extraction */}
-      <div style={{ position: 'absolute', left: -9999, top: 0, opacity: 0, pointerEvents: 'none' }}>
+      {/* Hidden QR canvas for data extraction */}
+      <div id={containerId} style={{ position: 'absolute', left: -9999, top: 0, opacity: 0, pointerEvents: 'none' }}>
         <QRCodeCanvas
-          ref={canvasRef}
           value={value}
           size={size * 3}
           level="H"
@@ -48,18 +49,28 @@ function QRCodeImage({ value, size, className }: { value: string; size: number; 
           fgColor="#000000"
         />
       </div>
+
       {/* Visible Base64 image for reliable PDF capture */}
       {imgSrc && isReady ? (
-        <img 
-          src={imgSrc} 
-          alt="QR Code" 
-          width={size} 
+        <img
+          src={imgSrc}
+          alt="QR Code"
+          width={size}
           height={size}
           crossOrigin="anonymous"
           style={{ display: 'block', width: size, height: size, imageRendering: 'crisp-edges' }}
         />
       ) : (
-        <div style={{ width: size, height: size, background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div
+          style={{
+            width: size,
+            height: size,
+            background: '#f0f0f0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
           <span style={{ fontSize: 10, color: '#999' }}>...</span>
         </div>
       )}
@@ -157,31 +168,6 @@ type PaymentMethodType = {
   icon_url: string;
 };
 
-function dataUrlToBlob(dataUrl: string): Promise<Blob> {
-  return fetch(dataUrl).then((r) => r.blob());
-}
-
-async function convertDataUrlToWebp(dataUrl: string, quality = 0.92): Promise<string> {
-  const blob = await dataUrlToBlob(dataUrl);
-  const img = await createImageBitmap(blob);
-
-  const canvas = document.createElement('canvas');
-  canvas.width = img.width;
-  canvas.height = img.height;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return dataUrl;
-
-  ctx.drawImage(img, 0, 0);
-
-  try {
-    const webp = canvas.toDataURL('image/webp', quality);
-    if (webp.startsWith('data:image/webp')) return webp;
-  } catch {
-    // ignore
-  }
-
-  return dataUrl;
-}
 
 // Convert image URL to Base64 for PDF export
 async function imageToBase64(url: string): Promise<string> {
@@ -223,10 +209,33 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [paymentMethodTypes, setPaymentMethodTypes] = useState<PaymentMethodType[]>([]);
   const [iconBase64Map, setIconBase64Map] = useState<Record<string, string>>({});
-  
+
   // Review count control
   const [reviewCount, setReviewCount] = useState<number>(4);
-  
+
+  // Live dimensions (for verifying strict 1:2 in the UI)
+  const [measuredBox, setMeasuredBox] = useState<{ w: number; h: number } | null>(null);
+
+  useEffect(() => {
+    if (!stickerRef.current) return;
+
+    const update = () => {
+      const rect = stickerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setMeasuredBox({ w: Math.round(rect.width), h: Math.round(rect.height) });
+    };
+
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(stickerRef.current);
+    window.addEventListener('resize', update);
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, [language]);
+
   // Fetch payment method types from database
   useEffect(() => {
     const fetchPaymentMethods = async () => {
@@ -234,10 +243,10 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
         .from('payment_method_types')
         .select('*')
         .order('name', { ascending: true });
-      
+
       if (!error && data) {
         setPaymentMethodTypes(data);
-        
+
         // Pre-convert icons to Base64 for PDF export
         const base64Map: Record<string, string> = {};
         for (const method of data) {
@@ -259,9 +268,10 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
         setIconBase64Map(base64Map);
       }
     };
-    
+
     fetchPaymentMethods();
   }, []);
+
   
   // Check if any payment details were provided
   const hasPaymentDetails = paymentMethods.some(p => 
@@ -314,14 +324,19 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     const element = stickerRef.current;
-    const baseW = element.offsetWidth;
-    const baseH = element.offsetHeight;
+
+    // IMPORTANT: force base dimensions to the exact 1:2 display box,
+    // so capture/export can never drift due to content reflow.
+    const baseW = STICKER_CONFIG.displayWidth;
+    const baseH = STICKER_CONFIG.displayWidth * STICKER_CONFIG.aspectRatio;
 
     // Clone for capture
     const clone = element.cloneNode(true) as HTMLElement;
     clone.removeAttribute('id');
     clone.style.width = `${baseW}px`;
     clone.style.height = `${baseH}px`;
+    clone.style.overflow = 'hidden';
+    clone.style.boxSizing = 'border-box';
     clone.style.background = '#ffffff';
     clone.style.fontFamily = language === 'ar' ? 'Tajawal, sans-serif' : 'Inter, sans-serif';
 
@@ -404,8 +419,7 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
 
       ctx.drawImage(rawCanvas, drawX, drawY, drawW, drawH);
 
-      const webp = finalCanvas.toDataURL('image/webp', 0.92);
-      if (webp.startsWith('data:image/webp')) return webp;
+      // Export image as PNG only (WebP option removed)
       return finalCanvas.toDataURL('image/png');
     } catch (error) {
       document.body.removeChild(stage);
@@ -425,14 +439,18 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
       await new Promise(resolve => setTimeout(resolve, 500));
       
       const element = stickerRef.current;
-      const baseW = element.offsetWidth;
-      const baseH = element.offsetHeight;
+
+      // IMPORTANT: force base dimensions to the exact 1:2 display box
+      const baseW = STICKER_CONFIG.displayWidth;
+      const baseH = STICKER_CONFIG.displayWidth * STICKER_CONFIG.aspectRatio;
 
       // Clone for capture
       const clone = element.cloneNode(true) as HTMLElement;
       clone.removeAttribute('id');
       clone.style.width = `${baseW}px`;
       clone.style.height = `${baseH}px`;
+      clone.style.overflow = 'hidden';
+      clone.style.boxSizing = 'border-box';
       clone.style.background = '#ffffff';
       clone.style.fontFamily = language === 'ar' ? 'Tajawal, sans-serif' : 'Inter, sans-serif';
 
@@ -554,11 +572,11 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
       if (!dataUrl) return;
 
       const link = document.createElement('a');
-      link.download = `${name.replace(/\s+/g, '-').toLowerCase()}-sticker.webp`;
+      link.download = `${name.replace(/\s+/g, '-').toLowerCase()}-sticker.png`;
       link.href = dataUrl;
       link.click();
 
-      toast.success(language === 'ar' ? 'تم تحميل الاستيكر بصيغة WebP' : 'Sticker downloaded as WebP');
+      toast.success(language === 'ar' ? 'تم تحميل الاستيكر بصيغة PNG' : 'Sticker downloaded as PNG');
     } catch (error) {
       console.error('Download error:', error);
       toast.error(language === 'ar' ? 'حدث خطأ أثناء التحميل' : 'Download failed');
@@ -683,14 +701,14 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
           }}
           disabled={isDownloading || isPrinting || isGeneratingPdf}
           variant="default"
-          className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+          className="gap-2"
         >
           {isDownloading ? (
             <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
             <Image className="w-4 h-4" />
           )}
-          {language === 'ar' ? 'تحميل WebP' : 'Download WebP'}
+          {language === 'ar' ? 'تحميل PNG' : 'Download PNG'}
         </Button>
 
         <Button
