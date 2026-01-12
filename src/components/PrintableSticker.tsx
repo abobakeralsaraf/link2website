@@ -806,10 +806,56 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
               }
             }
             
+            // Generate grid lines every 1cm
+            const gridLinesH = [];
+            for (let cm = 1; cm < Math.ceil(widthCm); cm++) {
+              const pos = (cm / widthCm) * 100;
+              if (pos < 100) {
+                gridLinesH.push({ cm, pos });
+              }
+            }
+            const gridLinesV = [];
+            for (let cm = 1; cm < Math.ceil(heightCm); cm++) {
+              const pos = (cm / heightCm) * 100;
+              if (pos < 100) {
+                gridLinesV.push({ cm, pos });
+              }
+            }
+            
             return (
               <div className="measurement-overlay absolute inset-0 z-50 pointer-events-none print:hidden">
+                {/* Internal Calibration Grid - dashed lines every 1cm */}
+                <div className="absolute inset-0">
+                  {/* Vertical grid lines */}
+                  {gridLinesH.map(({ cm, pos }) => (
+                    <div 
+                      key={`grid-v-${cm}`} 
+                      className="absolute top-0 bottom-0 w-px"
+                      style={{ 
+                        left: `${pos}%`,
+                        background: cm % 5 === 0 
+                          ? 'repeating-linear-gradient(to bottom, rgba(59, 130, 246, 0.6) 0, rgba(59, 130, 246, 0.6) 4px, transparent 4px, transparent 8px)'
+                          : 'repeating-linear-gradient(to bottom, rgba(59, 130, 246, 0.3) 0, rgba(59, 130, 246, 0.3) 2px, transparent 2px, transparent 6px)'
+                      }}
+                    />
+                  ))}
+                  {/* Horizontal grid lines */}
+                  {gridLinesV.map(({ cm, pos }) => (
+                    <div 
+                      key={`grid-h-${cm}`} 
+                      className="absolute left-0 right-0 h-px"
+                      style={{ 
+                        top: `${pos}%`,
+                        background: cm % 5 === 0 
+                          ? 'repeating-linear-gradient(to right, rgba(59, 130, 246, 0.6) 0, rgba(59, 130, 246, 0.6) 4px, transparent 4px, transparent 8px)'
+                          : 'repeating-linear-gradient(to right, rgba(59, 130, 246, 0.3) 0, rgba(59, 130, 246, 0.3) 2px, transparent 2px, transparent 6px)'
+                      }}
+                    />
+                  ))}
+                </div>
+
                 {/* Status badge */}
-                <div className={`absolute top-8 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold ${isRatioCorrect ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
+                <div className={`absolute top-8 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold shadow-lg ${isRatioCorrect ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
                   {isRatioCorrect 
                     ? (language === 'ar' ? '✓ نسبة 1:2 صحيحة' : '✓ Ratio 1:2 correct')
                     : (language === 'ar' ? `✗ نسبة 1:${(heightCm / widthCm).toFixed(2)} غير صحيحة` : `✗ Ratio 1:${(heightCm / widthCm).toFixed(2)} incorrect`)
@@ -817,7 +863,7 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
                 </div>
                 
                 {/* Horizontal graduated ruler (top) */}
-                <div className="absolute left-0 right-0 top-0 h-6 bg-yellow-100 border-b-2 border-yellow-600">
+                <div className="absolute left-0 right-0 top-0 h-6 bg-yellow-100/90 border-b-2 border-yellow-600">
                   {hTicks.map(({ cm, pos }) => (
                     <div key={`h-${cm}`} className="absolute top-0 h-full" style={{ left: `${pos}%` }}>
                       <div className={`absolute bottom-0 w-px ${cm % 5 === 0 ? 'h-full bg-yellow-800' : 'h-2 bg-yellow-600'}`} />
@@ -834,7 +880,7 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
                 </div>
 
                 {/* Vertical graduated ruler (left) */}
-                <div className="absolute left-0 top-0 bottom-0 w-6 bg-yellow-100 border-r-2 border-yellow-600">
+                <div className="absolute left-0 top-0 bottom-0 w-6 bg-yellow-100/90 border-r-2 border-yellow-600">
                   {vTicks.map(({ cm, pos }) => (
                     <div key={`v-${cm}`} className="absolute left-0 w-full" style={{ top: `${pos}%` }}>
                       <div className={`absolute right-0 h-px ${cm % 5 === 0 ? 'w-full bg-yellow-800' : 'w-2 bg-yellow-600'}`} />
@@ -851,10 +897,11 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
                 </div>
                 
                 {/* Dimension info box */}
-                <div className="absolute bottom-2 right-2 bg-black/80 text-white text-[10px] font-mono px-2 py-1 rounded">
+                <div className="absolute bottom-2 right-2 bg-black/80 text-white text-[10px] font-mono px-2 py-1 rounded shadow-lg">
                   <div>{measuredBox.w}×{measuredBox.h} px</div>
                   <div>{widthCm.toFixed(1)}×{heightCm.toFixed(1)} cm</div>
                   <div>Ratio: 1:{(heightCm / widthCm).toFixed(2)}</div>
+                  <div className="text-blue-300 mt-1">Grid: 1cm spacing</div>
                 </div>
               </div>
             );
