@@ -573,6 +573,27 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
       const dataUrl = await generateStickerImage();
       if (!dataUrl) return;
 
+      // Verify the exported pixel size is exactly 10000×20000
+      await new Promise<void>((resolve) => {
+        const img = document.createElement('img');
+        img.onload = () => {
+          const ok =
+            img.naturalWidth === STICKER_CONFIG.exportWidth &&
+            img.naturalHeight === STICKER_CONFIG.exportHeight;
+
+          if (!ok) {
+            toast.error(
+              language === 'ar'
+                ? `⚠️ قياس التصدير غير مطابق: ${img.naturalWidth}×${img.naturalHeight}`
+                : `⚠️ Export size mismatch: ${img.naturalWidth}×${img.naturalHeight}`
+            );
+          }
+          resolve();
+        };
+        img.onerror = () => resolve();
+        img.src = dataUrl;
+      });
+
       const link = document.createElement('a');
       link.download = `${name.replace(/\s+/g, '-').toLowerCase()}-sticker.png`;
       link.href = dataUrl;
@@ -759,12 +780,28 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
           }}
           dir={language === 'ar' ? 'rtl' : 'ltr'}
         >
-          {/* Measurement Overlay - Hidden during export */}
+          {/* Measurement Overlay (rulers) - Hidden during export */}
           {measuredBox && (
-            <div 
-              className="measurement-overlay absolute top-2 left-1/2 -translate-x-1/2 z-50 bg-black/70 text-white text-xs px-2 py-1 rounded-full font-mono print:hidden"
-            >
-              Box: {measuredBox.w}×{measuredBox.h} {measuredBox.h === measuredBox.w * 2 ? '✓ 1:2' : `(ratio: 1:${(measuredBox.h / measuredBox.w).toFixed(2)})`}
+            <div className="measurement-overlay absolute inset-0 z-50 pointer-events-none print:hidden">
+              {/* Horizontal ruler */}
+              <div className="absolute left-0 right-0 top-0 h-6 border-b border-border bg-background/80 text-foreground">
+                <div className="h-full flex items-center justify-between px-2 text-[10px] font-mono">
+                  <span>0</span>
+                  <span>Box: {measuredBox.w}×{measuredBox.h}</span>
+                  <span>{measuredBox.w}px</span>
+                </div>
+              </div>
+
+              {/* Vertical ruler */}
+              <div className="absolute left-0 top-0 bottom-0 w-6 border-r border-border bg-background/80 text-foreground">
+                <div className="h-full flex flex-col items-center justify-between py-2 text-[10px] font-mono">
+                  <span>0</span>
+                  <span className="[writing-mode:vertical-rl] [text-orientation:mixed]">
+                    {measuredBox.h === measuredBox.w * 2 ? '✓ 1:2' : `1:${(measuredBox.h / measuredBox.w).toFixed(2)}`}
+                  </span>
+                  <span>{measuredBox.h}px</span>
+                </div>
+              </div>
             </div>
           )}
           {/* Hero Image Header - 25% of sticker height */}
