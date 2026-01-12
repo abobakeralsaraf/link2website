@@ -340,10 +340,11 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
     clone.style.background = '#ffffff';
     clone.style.fontFamily = language === 'ar' ? 'Tajawal, sans-serif' : 'Inter, sans-serif';
 
-    // Remove all borders/shadows in clone
+    // Remove all borders/shadows in clone + hide measurement overlay
     const resetStyle = document.createElement('style');
     resetStyle.textContent = `
       *, *::before, *::after { outline: none !important; border: none !important; box-shadow: none !important; }
+      .measurement-overlay { display: none !important; }
     `;
     clone.prepend(resetStyle);
 
@@ -454,10 +455,11 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
       clone.style.background = '#ffffff';
       clone.style.fontFamily = language === 'ar' ? 'Tajawal, sans-serif' : 'Inter, sans-serif';
 
-      // Remove all borders/shadows in clone
+      // Remove all borders/shadows in clone + hide measurement overlay
       const resetStyle = document.createElement('style');
       resetStyle.textContent = `
         *, *::before, *::after { outline: none !important; border: none !important; box-shadow: none !important; }
+        .measurement-overlay { display: none !important; }
       `;
       clone.prepend(resetStyle);
 
@@ -752,10 +754,19 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
             width: `${STICKER_CONFIG.displayWidth}px`,
             height: `${STICKER_CONFIG.displayWidth * STICKER_CONFIG.aspectRatio}px`,
             fontFamily: language === 'ar' ? 'Tajawal, sans-serif' : 'Inter, sans-serif',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            position: 'relative'
           }}
           dir={language === 'ar' ? 'rtl' : 'ltr'}
         >
+          {/* Measurement Overlay - Hidden during export */}
+          {measuredBox && (
+            <div 
+              className="measurement-overlay absolute top-2 left-1/2 -translate-x-1/2 z-50 bg-black/70 text-white text-xs px-2 py-1 rounded-full font-mono print:hidden"
+            >
+              Box: {measuredBox.w}×{measuredBox.h} {measuredBox.h === measuredBox.w * 2 ? '✓ 1:2' : `(ratio: 1:${(measuredBox.h / measuredBox.w).toFixed(2)})`}
+            </div>
+          )}
           {/* Hero Image Header - 25% of sticker height */}
           {heroImage ? (
             <div 
