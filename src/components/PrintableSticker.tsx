@@ -780,30 +780,85 @@ export function PrintableSticker({ business, paymentMethods = [] }: PrintableSti
           }}
           dir={language === 'ar' ? 'rtl' : 'ltr'}
         >
-          {/* Measurement Overlay (rulers) - Hidden during export */}
-          {measuredBox && (
-            <div className="measurement-overlay absolute inset-0 z-50 pointer-events-none print:hidden">
-              {/* Horizontal ruler */}
-              <div className="absolute left-0 right-0 top-0 h-6 border-b border-border bg-background/80 text-foreground">
-                <div className="h-full flex items-center justify-between px-2 text-[10px] font-mono">
-                  <span>0</span>
-                  <span>Box: {measuredBox.w}×{measuredBox.h}</span>
-                  <span>{measuredBox.w}px</span>
+          {/* Graduated Ruler Overlay (cm) - Hidden during export */}
+          {measuredBox && (() => {
+            // Calculate cm based on 96 DPI (standard screen)
+            const PX_PER_CM = 37.8; // 96 DPI ≈ 37.8 px/cm
+            const widthCm = measuredBox.w / PX_PER_CM;
+            const heightCm = measuredBox.h / PX_PER_CM;
+            const isRatioCorrect = Math.abs(measuredBox.h - measuredBox.w * 2) < 2; // tolerance of 2px
+            
+            // Generate tick marks for horizontal ruler
+            const hTicks = [];
+            for (let cm = 0; cm <= Math.ceil(widthCm); cm++) {
+              const pos = (cm / widthCm) * 100;
+              if (pos <= 100) {
+                hTicks.push({ cm, pos });
+              }
+            }
+            
+            // Generate tick marks for vertical ruler
+            const vTicks = [];
+            for (let cm = 0; cm <= Math.ceil(heightCm); cm++) {
+              const pos = (cm / heightCm) * 100;
+              if (pos <= 100) {
+                vTicks.push({ cm, pos });
+              }
+            }
+            
+            return (
+              <div className="measurement-overlay absolute inset-0 z-50 pointer-events-none print:hidden">
+                {/* Status badge */}
+                <div className={`absolute top-8 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold ${isRatioCorrect ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
+                  {isRatioCorrect 
+                    ? (language === 'ar' ? '✓ نسبة 1:2 صحيحة' : '✓ Ratio 1:2 correct')
+                    : (language === 'ar' ? `✗ نسبة 1:${(heightCm / widthCm).toFixed(2)} غير صحيحة` : `✗ Ratio 1:${(heightCm / widthCm).toFixed(2)} incorrect`)
+                  }
                 </div>
-              </div>
-
-              {/* Vertical ruler */}
-              <div className="absolute left-0 top-0 bottom-0 w-6 border-r border-border bg-background/80 text-foreground">
-                <div className="h-full flex flex-col items-center justify-between py-2 text-[10px] font-mono">
-                  <span>0</span>
-                  <span className="[writing-mode:vertical-rl] [text-orientation:mixed]">
-                    {measuredBox.h === measuredBox.w * 2 ? '✓ 1:2' : `1:${(measuredBox.h / measuredBox.w).toFixed(2)}`}
+                
+                {/* Horizontal graduated ruler (top) */}
+                <div className="absolute left-0 right-0 top-0 h-6 bg-yellow-100 border-b-2 border-yellow-600">
+                  {hTicks.map(({ cm, pos }) => (
+                    <div key={`h-${cm}`} className="absolute top-0 h-full" style={{ left: `${pos}%` }}>
+                      <div className={`absolute bottom-0 w-px ${cm % 5 === 0 ? 'h-full bg-yellow-800' : 'h-2 bg-yellow-600'}`} />
+                      {cm % 2 === 0 && (
+                        <span className="absolute bottom-1 -translate-x-1/2 text-[8px] font-mono text-yellow-900 font-bold">
+                          {cm}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                  <span className="absolute right-1 top-0 text-[8px] font-mono text-yellow-800">
+                    {widthCm.toFixed(1)} cm
                   </span>
-                  <span>{measuredBox.h}px</span>
+                </div>
+
+                {/* Vertical graduated ruler (left) */}
+                <div className="absolute left-0 top-0 bottom-0 w-6 bg-yellow-100 border-r-2 border-yellow-600">
+                  {vTicks.map(({ cm, pos }) => (
+                    <div key={`v-${cm}`} className="absolute left-0 w-full" style={{ top: `${pos}%` }}>
+                      <div className={`absolute right-0 h-px ${cm % 5 === 0 ? 'w-full bg-yellow-800' : 'w-2 bg-yellow-600'}`} />
+                      {cm % 2 === 0 && (
+                        <span className="absolute right-1 -translate-y-1/2 text-[8px] font-mono text-yellow-900 font-bold">
+                          {cm}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                  <span className="absolute bottom-1 left-0 text-[8px] font-mono text-yellow-800 [writing-mode:vertical-rl]">
+                    {heightCm.toFixed(1)} cm
+                  </span>
+                </div>
+                
+                {/* Dimension info box */}
+                <div className="absolute bottom-2 right-2 bg-black/80 text-white text-[10px] font-mono px-2 py-1 rounded">
+                  <div>{measuredBox.w}×{measuredBox.h} px</div>
+                  <div>{widthCm.toFixed(1)}×{heightCm.toFixed(1)} cm</div>
+                  <div>Ratio: 1:{(heightCm / widthCm).toFixed(2)}</div>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
           {/* Hero Image Header - 25% of sticker height */}
           {heroImage ? (
             <div 
