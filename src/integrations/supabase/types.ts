@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_emails: {
+        Row: {
+          added_by: string | null
+          created_at: string
+          email: string
+        }
+        Insert: {
+          added_by?: string | null
+          created_at?: string
+          email: string
+        }
+        Update: {
+          added_by?: string | null
+          created_at?: string
+          email?: string
+        }
+        Relationships: []
+      }
       generated_sites: {
         Row: {
           business_data: Json
@@ -158,7 +176,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          business_data?: Json | null
+          business_data?: never
           created_at?: string | null
           custom_domain?: string | null
           domain_approval_status?: string | null
@@ -172,7 +190,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
-          business_data?: Json | null
+          business_data?: never
           created_at?: string | null
           custom_domain?: string | null
           domain_approval_status?: string | null
