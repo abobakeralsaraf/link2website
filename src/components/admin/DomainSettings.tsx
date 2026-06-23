@@ -52,15 +52,41 @@ export function DomainSettings({
     setTimeout(() => setCopied(null), 2000);
   };
 
+  const validateDomain = (raw: string): boolean => {
+    const d = raw.trim().toLowerCase();
+    if (!d || d.length > 253) return false;
+    // Only ASCII letters/digits/dots/hyphens (block IDN/homograph)
+    if (!/^[a-z0-9.-]+$/.test(d)) return false;
+    // No consecutive hyphens or dots, no leading/trailing dot/hyphen
+    if (d.includes('--') || d.includes('..')) return false;
+    if (d.startsWith('-') || d.startsWith('.') || d.endsWith('-') || d.endsWith('.')) return false;
+
+    const parts = d.split('.');
+    if (parts.length < 2) return false;
+    for (const p of parts) {
+      if (p.length === 0 || p.length > 63) return false;
+      if (p.startsWith('-') || p.endsWith('-')) return false;
+      if (!/^[a-z0-9-]+$/.test(p)) return false;
+    }
+    const tld = parts[parts.length - 1];
+    if (!/^[a-z]{2,24}$/.test(tld)) return false;
+
+    const blocked = ['localhost', 'local', 'internal', 'invalid', 'test', 'example.com', 'example.org', 'example.net', 'test.com', 'lovable.app', 'lovable.dev', 'lovableproject.com', 'saroarabuilder.com'];
+    if (blocked.some(b => d === b || d.endsWith('.' + b))) return false;
+
+    // Block private/reserved literals
+    if (/^(\d+\.){3}\d+$/.test(d)) return false;
+
+    return true;
+  };
+
   const handleSaveDomain = async () => {
     if (!domain.trim()) {
       toast.error(language === 'ar' ? 'يرجى إدخال النطاق' : 'Please enter a domain');
       return;
     }
 
-    // Basic domain validation
-    const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?\.[a-zA-Z]{2,}$/;
-    if (!domainRegex.test(domain.trim())) {
+    if (!validateDomain(domain)) {
       toast.error(language === 'ar' ? 'صيغة النطاق غير صحيحة' : 'Invalid domain format');
       return;
     }
