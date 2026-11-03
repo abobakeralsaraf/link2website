@@ -14,9 +14,11 @@ export function PremiumMapSection({ business }: PremiumMapSectionProps) {
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(business.address)}`;
   
   // Create embed URL from placeId or address
-  const embedUrl = business.placeId 
-    ? `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=place_id:${business.placeId}&zoom=16`
-    : `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${encodeURIComponent(business.address)}&zoom=16`;
+  const mapsKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  const place = business.placeId ? `place_id:${business.placeId}` : address;
+  const embedUrl = mapsKey
+    ? `https://www.google.com/maps/embed/v1/place?key=${mapsKey}&q=${encodeURIComponent(place)}&zoom=16`
+    : `https://www.google.com/maps?q=${encodeURIComponent(address)}&output=embed`;
 
   return (
     <section className="py-20 md:py-32 bg-secondary/30">

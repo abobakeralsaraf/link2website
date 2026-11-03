@@ -10,8 +10,11 @@ interface MapSectionProps {
 
 export function MapSection({ business }: MapSectionProps) {
   const { t } = useLanguage();
-  
-  const mapUrl = `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${encodeURIComponent(business.address)}&zoom=15`;
+  const mapsKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  const address = encodeURIComponent(business.address);
+  const mapUrl = mapsKey
+    ? `https://www.google.com/maps/embed/v1/place?key=${mapsKey}&q=${address}&zoom=15`
+    : `https://www.google.com/maps?q=${address}&output=embed`;
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(business.address)}`;
 
   return (
